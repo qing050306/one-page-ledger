@@ -1,0 +1,4933 @@
+<!DOCTYPE html>
+<!--
+  一页账 · 本地记账
+  打开方式、数据说明、12:00 汇总行为见同目录 README.md。
+  数据键：localStorage["ledger-v1"]；金额以整数分保存；日期固定按 Asia/Shanghai。
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4eee4">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="一页账，一个只在浏览器本地运行的记账应用。">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="一页账">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>一页账 · 本地记账</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='10' fill='%23263f34'/%3E%3Cpath d='M10 8.5h9.5a2 2 0 0 1 2 2V24l-2.7-1.5-2.8 1.5-2.8-1.5L10 24V8.5z' fill='none' stroke='%23f7f0e3' stroke-width='1.5' stroke-linejoin='round'/%3E%3Cpath d='M13.3 13h4.9M13.3 16.3h4.9M13.3 19.6h2.9' fill='none' stroke='%23f7f0e3' stroke-width='1.35' stroke-linecap='round'/%3E%3Ccircle cx='21.1' cy='23.1' r='1.35' fill='%23b45645'/%3E%3C/svg%3E">
+  <style>
+    /* ===== 设计变量 ===== */
+    :root {
+      --bg: #f4eee4;
+      --bg-deep: #ece3d5;
+      --surface: #fffdf8;
+      --surface-soft: #faf6ee;
+      --surface-tint: #f8f2e8;
+      --ink: #213b31;
+      --ink-soft: #374e43;
+      --muted: #5f7066;
+      --faint: #738278;
+      --line: #e7dfd1;
+      --line-strong: #d8ccbb;
+      --green: #2d4c3e;
+      --green-deep: #20392e;
+      --green-soft: #edf3ed;
+      --red: #a34b3c;
+      --red-deep: #893b2f;
+      --red-soft: #f8ede9;
+      --sand: #b38b5f;
+      --credit-on-dark: #c2d8c4;
+      --debit-on-dark: #efb4a4;
+      --radius: 20px;
+      --shadow: 0 16px 38px -28px rgba(62, 47, 28, 0.28), 0 2px 7px rgba(62, 47, 28, 0.035);
+      --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+      --font-serif: Georgia, "Times New Roman", "Songti SC", "STSong", "SimSun", serif;
+    }
+
+    /* ===== 基础 ===== */
+    *, *::before, *::after { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html {
+      min-width: 320px;
+      background: var(--bg);
+      -webkit-text-size-adjust: 100%;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(920px 480px at 50% -190px, rgba(255, 251, 243, 0.98) 0%, rgba(255, 251, 243, 0) 72%),
+        repeating-linear-gradient(0deg, rgba(95, 80, 58, 0.017) 0 1px, transparent 1px 28px),
+        repeating-linear-gradient(90deg, rgba(95, 80, 58, 0.013) 0 1px, transparent 1px 28px),
+        var(--bg);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    body.modal-open { overflow: hidden; }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button {
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    button:disabled { cursor: default; }
+    h1, h2, h3, p { margin: 0; }
+    svg { display: block; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    :focus-visible {
+      outline: 2px solid #8b6d50;
+      outline-offset: 3px;
+    }
+    button:focus:not(:focus-visible), input:focus:not(:focus-visible), select:focus:not(:focus-visible) { outline: none; }
+    ::selection { background: #e8ddca; color: var(--ink); }
+    .skip-link {
+      position: fixed;
+      z-index: 500;
+      top: 10px;
+      left: 10px;
+      padding: 9px 13px;
+      border-radius: 9px;
+      color: #fffaf0;
+      background: var(--green-deep);
+      font-size: 13px;
+      transform: translateY(-160%);
+      transition: transform 160ms ease;
+    }
+    .skip-link:focus { transform: translateY(0); }
+
+    /* ===== 页面骨架 ===== */
+    .app-root { min-height: 100vh; min-height: 100dvh; }
+    .page {
+      width: min(100%, 520px);
+      min-height: 100vh;
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: 0 18px calc(114px + env(safe-area-inset-bottom));
+    }
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: calc(18px + env(safe-area-inset-top)) 2px 17px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      flex: 0 0 34px;
+      display: grid;
+      place-items: center;
+      color: var(--green);
+      background: rgba(255, 253, 248, 0.85);
+      border: 1px solid var(--line-strong);
+      border-radius: 11px;
+      box-shadow: 0 2px 8px rgba(62, 47, 28, 0.035);
+    }
+    .brand-mark svg { width: 19px; height: 19px; }
+    .brand h1 {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      line-height: 1;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+    .icon-button {
+      width: 44px;
+      height: 44px;
+      flex: 0 0 44px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      color: var(--ink-soft);
+      background: rgba(255, 253, 248, 0.78);
+      border: 1px solid var(--line-strong);
+      border-radius: 50%;
+      transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+    }
+    .icon-button:hover { color: var(--green-deep); background: var(--surface); }
+    .icon-button:active { transform: scale(0.955); }
+    .icon-button svg { width: 19px; height: 19px; }
+    .main { display: flex; flex-direction: column; gap: 15px; }
+    .card {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .card-title {
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      line-height: 1.4;
+    }
+    .card-meta {
+      color: var(--muted);
+      font-size: 11.5px;
+      line-height: 1.5;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .text-link {
+      min-height: 34px;
+      padding: 0 1px;
+      color: var(--green);
+      background: none;
+      border: 0;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      text-decoration: underline;
+      text-decoration-color: rgba(45, 76, 62, 0.28);
+      text-underline-offset: 4px;
+      transition: color 160ms ease, text-decoration-color 160ms ease;
+    }
+    .text-link:hover { color: var(--green-deep); text-decoration-color: var(--green-deep); }
+    .empty-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 0 13px;
+      color: var(--green);
+      background: var(--green-soft);
+      border: 1px solid #dbe7dc;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      transition: background-color 160ms ease, color 160ms ease;
+    }
+    .empty-action:hover { color: var(--green-deep); background: #e4eee5; }
+
+    /* ===== 余额卡 ===== */
+    .balance-card {
+      position: relative;
+      overflow: hidden;
+      padding: 21px 21px 18px;
+      color: #f8f1e5;
+      background:
+        radial-gradient(110% 150% at 100% -15%, #3d5b49 0%, rgba(61, 91, 73, 0) 56%),
+        linear-gradient(142deg, #2a493b 0%, #203a2f 72%, #1c332a 100%);
+      border: 1px solid #2a4538;
+      border-radius: var(--radius);
+      box-shadow: 0 20px 38px -30px rgba(25, 45, 35, 0.72), 0 3px 8px rgba(25, 45, 35, 0.09);
+    }
+    .balance-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .balance-label {
+      color: rgba(248, 241, 229, 0.68);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.07em;
+    }
+    .balance-month {
+      color: rgba(248, 241, 229, 0.65);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+    .balance-main {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      min-height: 57px;
+    }
+    .balance-currency {
+      color: rgba(248, 241, 229, 0.7);
+      font-family: var(--font-serif);
+      font-size: 22px;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+    .balance-number {
+      color: #fbf5e9;
+      font-family: var(--font-serif);
+      font-size: clamp(43px, 12vw, 54px);
+      font-weight: 500;
+      line-height: 0.96;
+      letter-spacing: -0.045em;
+      font-variant-numeric: tabular-nums lining-nums;
+      overflow-wrap: anywhere;
+    }
+    .balance-card.is-negative .balance-number { color: #f1b6a7; }
+    .balance-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 17px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(248, 241, 229, 0.14);
+    }
+    .balance-metric-label {
+      display: block;
+      color: rgba(248, 241, 229, 0.62);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .balance-metric-value {
+      display: block;
+      margin-top: 4px;
+      font-family: var(--font-serif);
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: -0.015em;
+      line-height: 1.3;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .balance-metric-value.expense { color: var(--debit-on-dark); }
+    .balance-metric-value.income { color: var(--credit-on-dark); }
+    .budget-block {
+      margin-top: 16px;
+      padding-top: 13px;
+      border-top: 1px solid rgba(248, 241, 229, 0.14);
+    }
+    .budget-copy {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      color: rgba(248, 241, 229, 0.68);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .budget-copy strong {
+      color: #f1e9db;
+      font-family: var(--font-serif);
+      font-size: 13px;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+    }
+    .budget-copy .over { color: #f0b4a6; }
+    .budget-bar {
+      height: 5px;
+      margin-top: 8px;
+      overflow: hidden;
+      background: rgba(248, 241, 229, 0.13);
+      border-radius: 999px;
+    }
+    .budget-fill {
+      display: block;
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: #cfb083;
+      transition: width 220ms ease;
+    }
+    .budget-fill.over { background: #c97663; }
+
+    /* ===== 今日 / 12:00 ===== */
+    .compact-card { padding: 18px 20px 17px; }
+    .today-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .today-amount-line {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .today-amount {
+      color: var(--red);
+      font-family: var(--font-serif);
+      font-size: 36px;
+      font-weight: 500;
+      line-height: 1.04;
+      letter-spacing: -0.035em;
+      font-variant-numeric: tabular-nums lining-nums;
+    }
+    .today-count {
+      color: var(--muted);
+      font-size: 11.5px;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .noon-card {
+      background: linear-gradient(145deg, #fffdf8 0%, #fbf7ef 100%);
+      border-color: #e8dfd0;
+      padding: 17px 20px 16px;
+    }
+    .noon-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .noon-head .text-link { min-height: 30px; }
+    .noon-body { margin-top: 10px; }
+    .noon-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: #5e7065;
+      font-size: 10.5px;
+      line-height: 1;
+      letter-spacing: 0.02em;
+    }
+    .noon-status::before {
+      content: "";
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #93a399;
+    }
+    .noon-status.is-live::before { background: var(--green); }
+    .noon-amount-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 7px;
+    }
+    .noon-amount {
+      color: var(--red);
+      font-family: var(--font-serif);
+      font-size: 27px;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: -0.025em;
+      font-variant-numeric: tabular-nums;
+    }
+    .noon-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px 9px;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .noon-meta .meta-dot { width: 3px; height: 3px; border-radius: 50%; background: #b8afa0; }
+    .noon-empty {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+
+    /* ===== 最近明细 ===== */
+    .recent-section { display: flex; flex-direction: column; gap: 9px; }
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 3px 2px 0;
+    }
+    .section-head h2 {
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    .recent-card { overflow: hidden; }
+    .recent-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      width: 100%;
+      min-height: 63px;
+      padding: 12px 19px;
+      background: transparent;
+      border: 0;
+      border-top: 1px solid #f0e9dc;
+      text-align: left;
+      transition: background-color 150ms ease;
+    }
+    .recent-row:first-child { border-top: 0; }
+    .recent-row:hover { background: #fdfaf3; }
+    .recent-main { min-width: 0; flex: 1 1 auto; }
+    .recent-topline {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
+    }
+    .recent-category {
+      overflow: hidden;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.4;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .recent-time {
+      color: var(--faint);
+      font-size: 10.5px;
+      line-height: 1.4;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .recent-note {
+      display: block;
+      margin-top: 2px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 11.5px;
+      line-height: 1.55;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .recent-amount {
+      flex: 0 0 auto;
+      font-family: var(--font-serif);
+      font-size: 17px;
+      font-weight: 500;
+      line-height: 1.4;
+      letter-spacing: -0.015em;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .recent-amount.expense { color: var(--red); }
+    .recent-amount.income { color: var(--green); }
+    .recent-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      min-height: 150px;
+      padding: 25px 18px;
+      text-align: center;
+    }
+    .recent-empty p { color: var(--muted); font-size: 13px; }
+
+    /* ===== 图表卡 ===== */
+    .chart-card { padding: 18px 20px 17px; }
+    .weekly-chart {
+      width: 100%;
+      min-width: 0;
+      margin-top: 10px;
+    }
+    .weekly-svg { width: 100%; height: auto; overflow: visible; }
+    .bar-value { fill: var(--ink-soft); font-size: 8.8px; font-family: var(--font-serif); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+    .bar-value.is-zero { fill: #a3ada5; }
+    .bar-label { fill: var(--muted); font-size: 10px; font-family: var(--font-sans); }
+    .bar-label.is-today { fill: var(--ink); font-weight: 600; }
+    .bar-baseline { stroke: #e8dfd1; stroke-width: 1; }
+    .chart-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      min-height: 164px;
+      padding: 22px 12px 10px;
+      text-align: center;
+    }
+    .chart-empty p { color: var(--muted); font-size: 12.5px; }
+
+    /* ===== 分类占比 ===== */
+    .category-card { padding: 18px 20px 19px; }
+    .category-list { margin-top: 14px; display: flex; flex-direction: column; gap: 14px; }
+    .category-row { min-width: 0; }
+    .category-row-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .category-name {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--ink-soft);
+      font-weight: 500;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .category-figures {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+    .category-figures b {
+      color: var(--ink-soft);
+      font-family: var(--font-serif);
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .category-track {
+      height: 6px;
+      margin-top: 7px;
+      overflow: hidden;
+      background: #f2ece1;
+      border-radius: 999px;
+    }
+    .category-fill {
+      display: block;
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--red);
+      opacity: 0.88;
+      transition: width 220ms ease;
+    }
+    .category-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      min-height: 145px;
+      padding: 22px 12px 8px;
+      text-align: center;
+    }
+    .category-empty p { color: var(--muted); font-size: 12.5px; }
+    .page-footnote {
+      padding: 17px 2px 0;
+      color: var(--faint);
+      font-size: 10.5px;
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+
+    /* ===== 底部操作 ===== */
+    .dock {
+      position: fixed;
+      z-index: 30;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: flex;
+      justify-content: center;
+      padding: 15px 18px calc(14px + env(safe-area-inset-bottom));
+      pointer-events: none;
+    }
+    .dock::before {
+      content: "";
+      position: absolute;
+      right: 50%;
+      bottom: 0;
+      left: 50%;
+      width: min(100%, 520px);
+      height: 100%;
+      background: linear-gradient(180deg, rgba(244, 238, 228, 0) 0%, rgba(244, 238, 228, 0.91) 42%, rgba(244, 238, 228, 0.99) 100%);
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+    .dock-inner {
+      position: relative;
+      z-index: 1;
+      width: min(100%, 484px);
+      pointer-events: auto;
+    }
+    .primary-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 48px;
+      padding: 0 20px;
+      color: #fffaf0;
+      background: linear-gradient(180deg, #355745 0%, #274337 100%);
+      border: 1px solid rgba(29, 54, 42, 0.55);
+      border-radius: 14px;
+      box-shadow: 0 9px 22px -14px rgba(33, 59, 49, 0.52), inset 0 1px 0 rgba(255, 250, 240, 0.09);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease, opacity 160ms ease;
+    }
+    .primary-button:hover:not(:disabled) { background: linear-gradient(180deg, #2e4e3e 0%, #223d31 100%); }
+    .primary-button:active:not(:disabled) { transform: translateY(1px) scale(0.995); box-shadow: 0 4px 12px -11px rgba(33, 59, 49, 0.5); }
+    .primary-button:disabled { opacity: 0.55; box-shadow: none; }
+    .cta { width: 100%; min-height: 53px; border-radius: 16px; font-size: 15px; }
+    .cta svg { width: 17px; height: 17px; }
+
+    /* ===== 二级页面 ===== */
+    .subpage {
+      position: fixed;
+      z-index: 60;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      background: rgba(31, 45, 37, 0.25);
+      opacity: 0;
+      transition: opacity 200ms ease;
+    }
+    .subpage.is-open { opacity: 1; }
+    .subpage-panel {
+      display: flex;
+      flex-direction: column;
+      width: min(100%, 520px);
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      background:
+        radial-gradient(800px 380px at 50% -150px, rgba(255, 251, 243, 0.9), rgba(255, 251, 243, 0) 70%),
+        var(--bg);
+      box-shadow: 0 0 50px rgba(37, 31, 22, 0.14);
+      transform: translateX(22px);
+      transition: transform 240ms cubic-bezier(0.22, 0.82, 0.26, 1);
+    }
+    .subpage.is-open .subpage-panel { transform: translateX(0); }
+    .subpage:not(.is-open) .subpage-panel { pointer-events: none; }
+    .subpage-header {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) 44px;
+      align-items: center;
+      flex: 0 0 auto;
+      gap: 8px;
+      padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
+      background: rgba(246, 240, 231, 0.94);
+      border-bottom: 1px solid rgba(215, 204, 187, 0.72);
+      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px);
+    }
+    .subpage-header h2 {
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 600;
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+    .subpage-header .icon-button {
+      width: 40px;
+      height: 40px;
+      flex-basis: 40px;
+      color: var(--ink-soft);
+      background: transparent;
+      border-color: transparent;
+      border-radius: 10px;
+    }
+    .subpage-header .icon-button:hover { background: rgba(255, 253, 248, 0.74); }
+    .subpage-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 16px 18px calc(32px + env(safe-area-inset-bottom));
+      -webkit-overflow-scrolling: touch;
+    }
+    .subpage-lead {
+      margin: 0 3px 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    /* ===== 全部明细 ===== */
+    .filter-card { padding: 16px; }
+    .filter-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .filter-top h3 {
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .filter-top .text-link { min-height: 28px; font-size: 11.5px; }
+    .filter-search { position: relative; }
+    .filter-search input {
+      width: 100%;
+      height: 44px;
+      padding: 0 13px;
+      color: var(--ink);
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      font-size: 16px;
+      outline: 0;
+      transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+    }
+    .filter-search input:focus {
+      background: var(--surface);
+      border-color: #b9a993;
+      box-shadow: 0 0 0 3px rgba(72, 95, 82, 0.09);
+    }
+    .filter-search input::placeholder { color: #9ca69e; font-size: 13px; }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .mini-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    .mini-field.is-full { grid-column: 1 / -1; }
+    .mini-field span {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .mini-field select,
+    .mini-field input {
+      width: 100%;
+      min-width: 0;
+      height: 42px;
+      padding: 0 10px;
+      color: var(--ink);
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      outline: 0;
+      transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+    }
+    .mini-field select:focus,
+    .mini-field input:focus {
+      background: var(--surface);
+      border-color: #b9a993;
+      box-shadow: 0 0 0 3px rgba(72, 95, 82, 0.09);
+    }
+    .filter-error {
+      margin-top: 9px;
+      color: var(--red-deep);
+      font-size: 11.5px;
+      line-height: 1.5;
+    }
+    .records-result-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 16px 3px 8px;
+      color: var(--muted);
+      font-size: 11.5px;
+      line-height: 1.5;
+    }
+    .records-list { display: flex; flex-direction: column; gap: 14px; }
+    .records-group {
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      box-shadow: var(--shadow);
+    }
+    .records-date {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 17px 8px;
+      color: var(--muted);
+      background: #fbf7ef;
+      font-size: 11.5px;
+      line-height: 1.45;
+      font-weight: 500;
+    }
+    .records-date span:last-child {
+      color: var(--faint);
+      font-size: 10.5px;
+      font-variant-numeric: tabular-nums;
+    }
+    .record-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      width: 100%;
+      min-height: 60px;
+      padding: 11px 17px;
+      background: transparent;
+      border: 0;
+      border-top: 1px solid #f0e9dc;
+      text-align: left;
+      transition: background-color 150ms ease;
+    }
+    .records-date + .record-row { border-top: 0; }
+    .record-row:hover { background: #fdfaf3; }
+    .record-main { min-width: 0; flex: 1 1 auto; }
+    .record-topline {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
+    }
+    .record-category {
+      overflow: hidden;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.4;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .record-clock {
+      color: var(--faint);
+      font-size: 10.5px;
+      line-height: 1.4;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .record-note {
+      display: block;
+      margin-top: 2px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 11.5px;
+      line-height: 1.55;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .record-amount {
+      flex: 0 0 auto;
+      font-family: var(--font-serif);
+      font-size: 17px;
+      font-weight: 500;
+      line-height: 1.4;
+      letter-spacing: -0.015em;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .record-amount.expense { color: var(--red); }
+    .record-amount.income { color: var(--green); }
+    .records-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      min-height: 220px;
+      padding: 30px 20px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .records-empty p { font-size: 13px; }
+
+    /* ===== 12:00 汇总列表 ===== */
+    .summary-list { display: flex; flex-direction: column; gap: 11px; }
+    .summary-item {
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      box-shadow: var(--shadow);
+    }
+    .summary-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      width: 100%;
+      padding: 15px 17px;
+      background: transparent;
+      border: 0;
+      text-align: left;
+      transition: background-color 150ms ease;
+    }
+    .summary-toggle:hover { background: #fdfaf3; }
+    .summary-main { min-width: 0; flex: 1 1 auto; }
+    .summary-date {
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+    .summary-sub {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+      font-variant-numeric: tabular-nums;
+    }
+    .summary-figure { flex: 0 0 auto; text-align: right; }
+    .summary-amount {
+      color: var(--red);
+      font-family: var(--font-serif);
+      font-size: 19px;
+      font-weight: 500;
+      line-height: 1.3;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+    .summary-count { margin-top: 3px; color: var(--faint); font-size: 10.5px; }
+    .summary-caret {
+      width: 17px;
+      height: 17px;
+      margin-left: 7px;
+      color: #9b9488;
+      transition: transform 180ms ease;
+    }
+    .summary-toggle[aria-expanded="true"] .summary-caret { transform: rotate(180deg); }
+    .summary-details {
+      padding: 3px 17px 12px;
+      background: #fdfaf3;
+      border-top: 1px solid #f0e9dc;
+    }
+    .summary-days-empty {
+      padding: 13px 0 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .summary-record {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      width: 100%;
+      padding: 10px 0;
+      background: none;
+      border: 0;
+      border-top: 1px solid #eee6d9;
+      text-align: left;
+    }
+    .summary-record:first-of-type { border-top: 0; }
+    .summary-record-main { min-width: 0; flex: 1 1 auto; }
+    .summary-record-title {
+      color: var(--ink-soft);
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+    .summary-record-note {
+      margin-top: 1px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .summary-record-amount {
+      flex: 0 0 auto;
+      font-family: var(--font-serif);
+      font-size: 13px;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .summary-record-amount.expense { color: var(--red); }
+    .summary-record-amount.income { color: var(--green); }
+    .summary-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      min-height: 210px;
+      padding: 28px 20px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .summary-empty p { font-size: 13px; line-height: 1.6; }
+
+    /* ===== 设置 ===== */
+    .settings-section + .settings-section { margin-top: 23px; }
+    .settings-title-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 4px;
+      margin-bottom: 8px;
+    }
+    .settings-title-row h3 {
+      color: var(--muted);
+      font-size: 11.5px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+    }
+    .settings-title-row .card-meta { font-size: 10.5px; }
+    .settings-card {
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 59px;
+      padding: 0 16px;
+    }
+    .setting-row + .setting-row { border-top: 1px solid #efe8db; }
+    .setting-label {
+      color: var(--ink-soft);
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .setting-entry {
+      display: flex;
+      align-items: baseline;
+      justify-content: flex-end;
+      gap: 5px;
+      min-width: 0;
+    }
+    .setting-currency { color: var(--muted); font-family: var(--font-serif); font-size: 13px; }
+    .setting-input {
+      width: 122px;
+      min-width: 0;
+      padding: 8px 0;
+      color: var(--ink);
+      background: transparent;
+      border: 0;
+      border-radius: 6px;
+      outline: 0;
+      font-family: var(--font-serif);
+      font-size: 20px;
+      font-weight: 500;
+      line-height: 1.25;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .setting-input:focus { box-shadow: 0 0 0 3px rgba(72, 95, 82, 0.1); }
+    .setting-input::placeholder {
+      color: #a6aca3;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 400;
+    }
+    .setting-input[aria-invalid="true"] { color: var(--red-deep); }
+    .settings-form-action {
+      padding: 11px 16px 14px;
+      border-top: 1px solid #efe8db;
+    }
+    .settings-form-action .primary-button { width: 100%; min-height: 44px; }
+    .settings-note {
+      padding: 11px 16px 14px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.65;
+      border-top: 1px solid #efe8db;
+    }
+    .settings-error {
+      margin: 9px 2px 0;
+      color: var(--red-deep);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .category-manage { padding: 0 16px; }
+    .category-setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 51px;
+      border-top: 1px solid #efe8db;
+    }
+    .category-setting-row:first-child { border-top: 0; }
+    .category-setting-name {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--ink-soft);
+      font-size: 13px;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .category-actions { display: flex; align-items: center; gap: 1px; flex: 0 0 auto; }
+    .category-fixed {
+      color: var(--faint);
+      font-size: 10.5px;
+      white-space: nowrap;
+    }
+    .mini-icon-button {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      border-radius: 9px;
+      transition: background-color 150ms ease, color 150ms ease;
+    }
+    .mini-icon-button:hover { color: var(--green); background: var(--surface-soft); }
+    .mini-icon-button.is-danger:hover { color: var(--red-deep); background: var(--red-soft); }
+    .mini-icon-button svg { width: 16px; height: 16px; }
+    .category-edit-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      min-height: 56px;
+      padding: 8px 0;
+      border-top: 1px solid #efe8db;
+    }
+    .category-edit-row:first-child { border-top: 0; }
+    .category-edit-input {
+      flex: 1 1 130px;
+      min-width: 0;
+      height: 38px;
+      padding: 0 10px;
+      color: var(--ink);
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      font-size: 16px;
+    }
+    .small-primary {
+      min-height: 36px;
+      padding: 0 12px;
+      color: #fffaf0;
+      background: var(--green);
+      border: 1px solid var(--green);
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .small-secondary {
+      min-height: 36px;
+      padding: 0 10px;
+      color: var(--muted);
+      background: transparent;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .category-add-form {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 0 13px;
+      border-top: 1px solid #efe8db;
+    }
+    .category-add-form input {
+      flex: 1 1 auto;
+      min-width: 0;
+      height: 39px;
+      padding: 0 11px;
+      color: var(--ink);
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      font-size: 16px;
+      outline: 0;
+    }
+    .category-add-form input:focus {
+      background: var(--surface);
+      border-color: #b9a993;
+      box-shadow: 0 0 0 3px rgba(72, 95, 82, 0.09);
+    }
+    .category-add-form .small-primary { min-height: 39px; }
+    .switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 16px;
+    }
+    .switch-copy { min-width: 0; }
+    .switch-copy .setting-label { display: block; }
+    .switch-description {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+    .switch {
+      position: relative;
+      flex: 0 0 auto;
+      width: 46px;
+      height: 28px;
+      padding: 0;
+      background: #ded6c9;
+      border: 1px solid #d4cabb;
+      border-radius: 999px;
+      transition: background-color 180ms ease, border-color 180ms ease;
+    }
+    .switch::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      background: #fffdf8;
+      border-radius: 50%;
+      box-shadow: 0 1px 4px rgba(55, 45, 30, 0.2);
+      transition: transform 180ms cubic-bezier(0.22, 0.82, 0.26, 1);
+    }
+    .switch[aria-checked="true"] { background: var(--green); border-color: var(--green); }
+    .switch[aria-checked="true"]::after { transform: translateX(18px); }
+    .data-card { padding: 0 16px; }
+    .data-action {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      width: 100%;
+      min-height: 54px;
+      padding: 0;
+      color: var(--ink-soft);
+      background: none;
+      border: 0;
+      border-top: 1px solid #efe8db;
+      font-size: 13px;
+      text-align: left;
+      transition: color 150ms ease;
+    }
+    .data-action:first-child { border-top: 0; }
+    .data-action:hover:not(:disabled) { color: var(--green); }
+    .data-action svg { width: 17px; height: 17px; flex: 0 0 auto; color: #98a097; }
+    .data-action.is-danger { color: var(--red-deep); }
+    .data-action.is-danger svg { color: #b98a80; }
+    .data-status {
+      margin-top: 9px;
+      padding: 9px 11px;
+      color: var(--muted);
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-size: 11.5px;
+      line-height: 1.6;
+    }
+    .data-status[data-tone="error"] {
+      color: var(--red-deep);
+      background: var(--red-soft);
+      border-color: #efdcd6;
+    }
+    .data-status[data-tone="success"] {
+      color: var(--green);
+      background: var(--green-soft);
+      border-color: #dce8dd;
+    }
+    .settings-footnote {
+      padding: 14px 4px 0;
+      color: var(--faint);
+      font-size: 10.5px;
+      line-height: 1.7;
+    }
+
+    /* ===== 弹层与记一笔 ===== */
+    .overlay {
+      position: fixed;
+      z-index: 80;
+      inset: 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .overlay-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(34, 43, 36, 0.38);
+      opacity: 0;
+      transition: opacity 200ms ease;
+      -webkit-backdrop-filter: blur(3px);
+      backdrop-filter: blur(3px);
+    }
+    .overlay.is-open .overlay-backdrop { opacity: 1; }
+    .sheet {
+      position: relative;
+      z-index: 1;
+      width: min(100%, 520px);
+      max-height: calc(100vh - 14px);
+      max-height: calc(100dvh - 14px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 7px 20px calc(18px + env(safe-area-inset-bottom));
+      background: var(--surface);
+      border: 1px solid rgba(219, 208, 191, 0.82);
+      border-bottom: 0;
+      border-radius: 24px 24px 0 0;
+      box-shadow: 0 -10px 40px rgba(44, 34, 22, 0.14);
+      transform: translateY(102%);
+      transition: transform 240ms cubic-bezier(0.22, 0.82, 0.26, 1);
+      -webkit-overflow-scrolling: touch;
+    }
+    .overlay.is-open .sheet { transform: translateY(0); }
+    .overlay:not(.is-open) .sheet { pointer-events: none; }
+    .confirm-layer:not(.is-open) .confirm-dialog { pointer-events: none; }
+    .sheet-handle {
+      width: 34px;
+      height: 4px;
+      margin: 1px auto 13px;
+      background: #e4dacb;
+      border-radius: 999px;
+    }
+    .sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .sheet-header h2 {
+      color: var(--ink);
+      font-size: 20px;
+      font-weight: 600;
+      line-height: 1.35;
+      letter-spacing: 0.01em;
+    }
+    .sheet-header .icon-button {
+      width: 40px;
+      height: 40px;
+      flex-basis: 40px;
+      border-color: var(--line);
+      background: var(--surface-soft);
+    }
+    .record-form { margin-top: 16px; }
+    .entry-type-switch + .form-field { margin-top: 14px; }
+    .entry-type-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      padding: 3px;
+      background: #f4efe6;
+      border: 1px solid #e7ddcf;
+      border-radius: 12px;
+    }
+    .entry-type-button {
+      height: 38px;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+    }
+    .entry-type-button[aria-pressed="true"][data-entry-type="expense"] {
+      color: var(--red-deep);
+      background: #fffaf5;
+      box-shadow: 0 1px 4px rgba(67, 49, 31, 0.09);
+    }
+    .entry-type-button[aria-pressed="true"][data-entry-type="income"] {
+      color: var(--green);
+      background: #fffaf5;
+      box-shadow: 0 1px 4px rgba(67, 49, 31, 0.09);
+    }
+    .form-field { min-width: 0; }
+    .form-field + .form-field { margin-top: 15px; }
+    .form-field > label,
+    .field-label {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--ink-soft);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .label-optional {
+      color: var(--faint);
+      font-size: 10.5px;
+      font-weight: 400;
+    }
+    .chart-holder { width: 100%; min-width: 0; }
+    .summary-record-note { display: block; }
+    .amount-entry {
+      display: flex;
+      align-items: baseline;
+      gap: 5px;
+      min-height: 76px;
+      padding: 7px 14px;
+      background: var(--surface-soft);
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+      transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+    }
+    .amount-entry:focus-within {
+      background: var(--surface);
+      border-color: #b4a389;
+      box-shadow: 0 0 0 3px rgba(72, 95, 82, 0.09);
+    }
+    .amount-entry.has-error { border-color: #c98d82; }
+    .amount-symbol {
+      color: var(--muted);
+      font-family: var(--font-serif);
+      font-size: 24px;
+      line-height: 1;
+      transition: color 160ms ease;
+    }
+    .record-form[data-type="expense"] .amount-symbol,
+    .record-form[data-type="expense"] .amount-input { color: var(--red); }
+    .record-form[data-type="income"] .amount-symbol,
+    .record-form[data-type="income"] .amount-input { color: var(--green); }
+    .amount-input {
+      width: 100%;
+      min-width: 0;
+      padding: 0;
+      background: transparent;
+      border: 0;
+      outline: 0;
+      font-family: var(--font-serif);
+      font-size: 36px;
+      font-weight: 500;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+    .amount-input::placeholder {
+      color: #b1b4a9;
+      font-family: var(--font-serif);
+      font-size: 32px;
+      letter-spacing: -0.02em;
+    }
+    .category-picker {
+      display: flex;
+      gap: 7px;
+      width: 100%;
+      overflow-x: auto;
+      padding: 1px 1px 4px;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .category-picker::-webkit-scrollbar { display: none; }
+    .category-chip {
+      flex: 0 0 auto;
+      min-height: 38px;
+      padding: 0 13px;
+      color: var(--ink-soft);
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+    }
+    .category-chip[aria-pressed="true"] {
+      color: #fffaf0;
+      background: var(--green);
+      border-color: var(--green);
+    }
+    .record-form[data-type="expense"] .category-chip[aria-pressed="true"] {
+      background: var(--red);
+      border-color: var(--red);
+    }
+    .form-field + .form-row { margin-top: 15px; }
+    .form-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 11px;
+    }
+    .form-input {
+      width: 100%;
+      min-width: 0;
+      height: 46px;
+      padding: 0 12px;
+      color: var(--ink);
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      font-family: var(--font-sans);
+      font-size: 16px;
+      outline: 0;
+      transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+    }
+    .form-input:focus {
+      background: var(--surface);
+      border-color: #b4a389;
+      box-shadow: 0 0 0 3px rgba(72, 95, 82, 0.09);
+    }
+    .form-input[aria-invalid="true"] { border-color: #c98d82; }
+    .form-input::placeholder { color: #9ca69e; font-size: 13px; }
+    .field-hint { margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .field-error { margin-top: 5px; color: var(--red-deep); font-size: 11.5px; line-height: 1.55; }
+    .form-error {
+      margin-top: 13px;
+      padding: 10px 12px;
+      color: var(--red-deep);
+      background: var(--red-soft);
+      border: 1px solid #efdcd6;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .sheet-actions { margin-top: 18px; display: flex; flex-direction: column; gap: 4px; }
+    .save-record-button { width: 100%; min-height: 50px; }
+    .delete-record-link {
+      align-self: center;
+      min-height: 42px;
+      padding: 0 12px;
+      color: var(--red-deep);
+      background: none;
+      border: 0;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 500;
+      transition: color 150ms ease, background-color 150ms ease;
+    }
+    .delete-record-link:hover { background: var(--red-soft); }
+    .form-row > .form-field + .form-field { margin-top: 0; }
+    .record-form > .field-hint + .form-field,
+    .record-form > .field-error + .form-field,
+    .record-form > .form-row + .form-field { margin-top: 15px; }
+
+    /* ===== 确认层 ===== */
+    .confirm-layer {
+      z-index: 120;
+      align-items: center;
+      padding: 20px;
+    }
+    .confirm-dialog {
+      position: relative;
+      z-index: 1;
+      width: min(100%, 350px);
+      padding: 21px 20px 18px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 22px 55px rgba(42, 33, 23, 0.22);
+      opacity: 0;
+      transform: translateY(7px) scale(0.985);
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+    .confirm-layer.is-open .confirm-dialog { opacity: 1; transform: translateY(0) scale(1); }
+    .confirm-dialog h2 { color: var(--ink); font-size: 17px; font-weight: 600; line-height: 1.5; }
+    .confirm-message {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+      overflow-wrap: anywhere;
+    }
+    .confirm-input-wrap { margin-top: 12px; }
+    .confirm-input-wrap label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ink-soft);
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .confirm-input-wrap input {
+      width: 100%;
+      height: 43px;
+      padding: 0 11px;
+      color: var(--ink);
+      background: var(--surface-soft);
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      font-size: 16px;
+    }
+    .confirm-error { margin-top: 10px; color: var(--red-deep); font-size: 12px; line-height: 1.6; }
+    .confirm-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-top: 19px;
+    }
+    .confirm-actions button {
+      min-height: 44px;
+      border-radius: 11px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background-color 160ms ease, opacity 160ms ease, transform 160ms ease;
+    }
+    .confirm-actions button:active:not(:disabled) { transform: scale(0.985); }
+    .secondary-button {
+      color: var(--ink-soft);
+      background: var(--surface-soft);
+      border: 1px solid var(--line-strong);
+    }
+    .secondary-button:hover { background: #f5efe5; }
+    .confirm-accept {
+      color: #fffaf0;
+      background: var(--green);
+      border: 1px solid var(--green);
+    }
+    .confirm-accept:hover:not(:disabled) { background: var(--green-deep); }
+    .confirm-accept.is-danger { background: var(--red-deep); border-color: var(--red-deep); }
+    .confirm-accept.is-danger:hover:not(:disabled) { background: #763228; }
+    .confirm-actions button:disabled { opacity: 0.5; }
+
+    /* ===== Toast ===== */
+    .toast {
+      position: fixed;
+      z-index: 300;
+      left: 50%;
+      bottom: calc(92px + env(safe-area-inset-bottom));
+      max-width: calc(100% - 36px);
+      padding: 9px 15px;
+      color: #fffaf0;
+      background: rgba(31, 52, 42, 0.96);
+      border: 1px solid rgba(255, 250, 240, 0.08);
+      border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(35, 29, 20, 0.18);
+      font-size: 12px;
+      line-height: 1.5;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translate(-50%, 6px);
+      transition: opacity 180ms ease, transform 180ms ease, visibility 180ms linear;
+    }
+    .toast.is-visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, 0);
+      transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear;
+    }
+    .noscript-note {
+      margin: 20px;
+      padding: 16px;
+      color: var(--red-deep);
+      background: var(--red-soft);
+      border: 1px solid #efdcd6;
+      border-radius: 12px;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    /* ===== 响应式 ===== */
+    @media (max-width: 359px) {
+      .page { padding-left: 14px; padding-right: 14px; }
+      .balance-card, .compact-card, .noon-card, .chart-card, .category-card { padding-left: 17px; padding-right: 17px; }
+      .balance-number { font-size: 41px; }
+      .today-amount { font-size: 32px; }
+      .recent-row, .record-row { padding-left: 15px; padding-right: 15px; }
+      .filter-grid { grid-template-columns: minmax(0, 1fr); }
+      .filter-grid .mini-field.is-full { grid-column: auto; }
+      .subpage-scroll { padding-left: 14px; padding-right: 14px; }
+      .form-row { grid-template-columns: minmax(0, 1fr); }
+      .form-row > .form-field + .form-field { margin-top: 13px; }
+      .settings-title-row { padding-left: 2px; padding-right: 2px; }
+    }
+    @media (min-width: 700px) {
+      .page { padding-left: 22px; padding-right: 22px; }
+      .subpage { background: rgba(31, 45, 37, 0.27); }
+      .subpage-panel { border-left: 1px solid rgba(255, 253, 248, 0.42); border-right: 1px solid rgba(255, 253, 248, 0.42); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#mainContent">跳到主要内容</a>
+
+  <div class="app-root" id="appRoot">
+    <div class="page">
+      <header class="app-header">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6.5 3.5h8.2a2 2 0 0 1 2 2v14l-2.2-1.3-2.6 1.3-2.6-1.3-2.8 1.3V5.5a2 2 0 0 1 2-2z"></path>
+              <path d="M9.6 8.2h4.9M9.6 11.2h4.9M9.6 14.2h2.8"></path>
+              <circle cx="17.5" cy="18.3" r="1.1" fill="currentColor" stroke="none" opacity="0.72"></circle>
+            </svg>
+          </span>
+          <h1>一页账</h1>
+        </div>
+        <button class="icon-button" id="settingsButton" type="button" aria-label="打开设置">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.2 14.7a1.7 1.7 0 0 0 .34 1.87l.05.05a2.06 2.06 0 1 1-2.92 2.92l-.05-.05a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56v.09a2.06 2.06 0 1 1-4.12 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.05.05a2.06 2.06 0 1 1-2.92-2.92l.05-.05a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03h-.09a2.06 2.06 0 1 1 0-4.12h.09a1.7 1.7 0 0 0 1.56-1.11 1.7 1.7 0 0 0-.34-1.87l-.05-.05a2.06 2.06 0 1 1 2.92-2.92l.05.05a1.7 1.7 0 0 0 1.87.34h.08a1.7 1.7 0 0 0 1.03-1.56v-.09a2.06 2.06 0 1 1 4.12 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.05-.05a2.06 2.06 0 1 1 2.92 2.92l-.05.05a1.7 1.7 0 0 0-.34 1.87v.08a1.7 1.7 0 0 0 1.56 1.03h.09a2.06 2.06 0 1 1 0 4.12h-.09a1.7 1.7 0 0 0-1.56 1.03z"></path>
+          </svg>
+        </button>
+      </header>
+
+      <main class="main" id="mainContent">
+        <section class="balance-card" id="balanceCard" aria-labelledby="balanceHeading"></section>
+        <section class="card compact-card today-card" id="todayCard" aria-labelledby="todayHeading"></section>
+        <section class="card noon-card" id="noonCard" aria-labelledby="noonHeading" hidden></section>
+
+        <section class="recent-section" aria-labelledby="recentHeading">
+          <div class="section-head">
+            <h2 id="recentHeading">最近明细</h2>
+            <button class="text-link" id="allRecordsButton" type="button">查看全部</button>
+          </div>
+          <div class="card recent-card" id="recentList"></div>
+        </section>
+
+        <section class="card chart-card" aria-labelledby="weeklyHeading">
+          <div class="card-head">
+            <h2 class="card-title" id="weeklyHeading">近 7 天支出</h2>
+          </div>
+          <div class="weekly-chart" id="weeklyChart"></div>
+        </section>
+
+        <section class="card category-card" aria-labelledby="categoryHeading">
+          <div class="card-head">
+            <h2 class="card-title" id="categoryHeading">本月分类占比</h2>
+            <span class="card-meta" id="categoryTotal"></span>
+          </div>
+          <div id="categoryBreakdown"></div>
+        </section>
+
+        <p class="page-footnote">所有账目仅保存在此设备</p>
+      </main>
+    </div>
+
+    <div class="dock">
+      <div class="dock-inner">
+        <button class="primary-button cta" id="addRecordButton" type="button">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <path d="M10 4v12M4 10h12"></path>
+          </svg>
+          记一笔
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 全部明细 -->
+  <div class="subpage" id="recordsView" hidden>
+    <section class="subpage-panel" id="recordsPanel" role="dialog" aria-modal="true" aria-labelledby="recordsTitle">
+      <header class="subpage-header">
+        <button class="icon-button" id="recordsBackButton" type="button" aria-label="返回首页">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7"></path>
+          </svg>
+        </button>
+        <h2 id="recordsTitle">全部明细</h2>
+        <span aria-hidden="true"></span>
+      </header>
+      <div class="subpage-scroll" id="recordsContent">
+        <div class="card filter-card">
+          <div class="filter-top">
+            <h3>筛选</h3>
+            <button class="text-link" id="resetFiltersButton" type="button" hidden>重置</button>
+          </div>
+          <div class="filter-search">
+            <label class="sr-only" for="filterSearch">关键字</label>
+            <input id="filterSearch" type="search" autocomplete="off" placeholder="搜索分类或备注">
+          </div>
+          <div class="filter-grid">
+            <label class="mini-field is-full" for="filterCategory">
+              <span>分类</span>
+              <select id="filterCategory"></select>
+            </label>
+            <label class="mini-field" for="filterFrom">
+              <span>起始日期</span>
+              <input id="filterFrom" type="date">
+            </label>
+            <label class="mini-field" for="filterTo">
+              <span>结束日期</span>
+              <input id="filterTo" type="date">
+            </label>
+          </div>
+          <p class="filter-error" id="filterError" role="alert" hidden></p>
+        </div>
+        <div class="records-result-head">
+          <span id="recordsResultCount"></span>
+        </div>
+        <div class="records-list" id="allRecordsList"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 12:00 汇总列表 -->
+  <div class="subpage" id="summariesView" hidden>
+    <section class="subpage-panel" id="summariesPanel" role="dialog" aria-modal="true" aria-labelledby="summariesTitle">
+      <header class="subpage-header">
+        <button class="icon-button" id="summariesBackButton" type="button" aria-label="返回首页">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7"></path>
+          </svg>
+        </button>
+        <h2 id="summariesTitle">12:00 汇总</h2>
+        <span aria-hidden="true"></span>
+      </header>
+      <div class="subpage-scroll">
+        <p class="subpage-lead">每天 12:00 截止的支出快照，点开可看当天全部明细。</p>
+        <div class="summary-list" id="summaryList"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 设置 -->
+  <div class="subpage" id="settingsView" hidden>
+    <section class="subpage-panel" id="settingsPanel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <header class="subpage-header">
+        <button class="icon-button" id="settingsBackButton" type="button" aria-label="返回首页">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7"></path>
+          </svg>
+        </button>
+        <h2 id="settingsTitle">设置</h2>
+        <span aria-hidden="true"></span>
+      </header>
+      <div class="subpage-scroll" id="settingsContent">
+        <section class="settings-section" aria-labelledby="fundsTitle">
+          <div class="settings-title-row">
+            <h3 id="fundsTitle">资金</h3>
+          </div>
+          <div class="settings-card">
+            <label class="setting-row" for="initialBalanceInput">
+              <span class="setting-label">初始余额</span>
+              <span class="setting-entry">
+                <span class="setting-currency" aria-hidden="true">¥</span>
+                <input class="setting-input" id="initialBalanceInput" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00">
+              </span>
+            </label>
+            <label class="setting-row" for="budgetInput">
+              <span class="setting-label">月预算</span>
+              <span class="setting-entry">
+                <span class="setting-currency" aria-hidden="true">¥</span>
+                <input class="setting-input" id="budgetInput" type="text" inputmode="decimal" autocomplete="off" placeholder="不设置">
+              </span>
+            </label>
+            <div class="settings-form-action">
+              <button class="primary-button" id="saveFundsButton" type="button">保存资金设置</button>
+            </div>
+            <p class="settings-note">初始余额可为负数；月预算留空表示不设置。</p>
+          </div>
+          <p class="settings-error" id="fundsError" role="alert" hidden></p>
+        </section>
+
+        <section class="settings-section" aria-labelledby="categoriesTitle">
+          <div class="settings-title-row">
+            <h3 id="categoriesTitle">分类</h3>
+            <span class="card-meta" id="categoryCount"></span>
+          </div>
+          <div class="settings-card category-manage">
+            <div id="categoryList"></div>
+            <form class="category-add-form" id="addCategoryForm">
+              <label class="sr-only" for="newCategoryInput">新分类名称</label>
+              <input id="newCategoryInput" type="text" maxlength="12" autocomplete="off" placeholder="添加分类">
+              <button class="small-primary" type="submit">添加</button>
+            </form>
+          </div>
+          <p class="settings-error" id="categoryError" role="alert" hidden></p>
+        </section>
+
+        <section class="settings-section" aria-labelledby="summarySettingTitle">
+          <div class="settings-title-row">
+            <h3 id="summarySettingTitle">每日汇总</h3>
+          </div>
+          <div class="settings-card">
+            <div class="switch-row">
+              <div class="switch-copy">
+                <span class="setting-label">12:00 汇总</span>
+                <p class="switch-description">关闭后首页只显示今日实时。</p>
+              </div>
+              <button class="switch" id="noonSwitch" type="button" role="switch" aria-checked="true" aria-label="12:00 汇总"></button>
+            </div>
+            <p class="settings-note">页面关闭时不会后台运行，下次打开会自动补算缺失日期；同一天只保留一条。</p>
+          </div>
+        </section>
+
+        <section class="settings-section" aria-labelledby="dataTitle">
+          <div class="settings-title-row">
+            <h3 id="dataTitle">数据</h3>
+            <span class="card-meta" id="dataSummary"></span>
+          </div>
+          <div class="settings-card data-card">
+            <button class="data-action" id="exportJsonButton" type="button">
+              <span>导出 JSON 备份</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 4v11"></path><path d="M8 11l4 4 4-4"></path><path d="M5 19h14"></path>
+              </svg>
+            </button>
+            <button class="data-action" id="exportCsvButton" type="button">
+              <span>导出账本 CSV</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M7 4h10v16H7z"></path><path d="M10 8h4M10 12h4M10 16h2"></path>
+              </svg>
+            </button>
+            <button class="data-action" id="importJsonButton" type="button">
+              <span>导入 JSON 备份</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 15V4"></path><path d="M8 8l4-4 4 4"></path><path d="M5 19h14"></path>
+              </svg>
+            </button>
+            <button class="data-action is-danger" id="clearDataButton" type="button">
+              <span>清空数据</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 7h14"></path><path d="M9 7V5h6v2"></path><path d="M7 7l.8 12h8.4L17 7"></path>
+              </svg>
+            </button>
+          </div>
+          <p class="data-status" id="dataStatus" role="status" aria-live="polite" hidden></p>
+          <p class="settings-footnote">账本只保存在本机浏览器，不上传。建议定期导出备份。</p>
+          <input type="file" id="importFileInput" accept="application/json,.json" hidden>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <!-- 记一笔 / 编辑 -->
+  <div class="overlay" id="recordLayer" hidden>
+    <div class="overlay-backdrop" id="recordBackdrop"></div>
+    <section class="sheet" id="recordDialog" role="dialog" aria-modal="true" aria-labelledby="recordTitle">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-header">
+        <h2 id="recordTitle">记一笔</h2>
+        <button class="icon-button" id="recordCloseButton" type="button" aria-label="关闭">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18"></path>
+          </svg>
+        </button>
+      </div>
+      <form class="record-form" id="recordForm" data-type="expense" novalidate>
+        <div class="entry-type-switch" role="group" aria-label="收支类型">
+          <button class="entry-type-button" type="button" data-entry-type="expense" aria-pressed="true">支出</button>
+          <button class="entry-type-button" type="button" data-entry-type="income" aria-pressed="false">收入</button>
+        </div>
+
+        <div class="form-field">
+          <label for="amountInput">金额</label>
+          <div class="amount-entry" id="amountEntry">
+            <span class="amount-symbol" aria-hidden="true">¥</span>
+            <input class="amount-input" id="amountInput" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" required aria-describedby="amountError amountHint">
+          </div>
+          <p class="field-hint" id="amountHint">最多两位小数</p>
+          <p class="field-error" id="amountError" role="alert" hidden></p>
+        </div>
+
+        <div class="form-field">
+          <span class="field-label" id="categoryPickerLabel">分类</span>
+          <div class="category-picker" id="categoryPicker" role="group" aria-labelledby="categoryPickerLabel"></div>
+          <p class="field-error" id="entryCategoryError" role="alert" hidden></p>
+        </div>
+
+        <div class="form-field">
+          <label for="noteInput">备注 <span class="label-optional">选填</span></label>
+          <input class="form-input" id="noteInput" type="text" maxlength="200" autocomplete="off" placeholder="写点什么">
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="dateInput">日期</label>
+            <input class="form-input" id="dateInput" type="date" autocomplete="off" required aria-describedby="timeHint timeError">
+          </div>
+          <div class="form-field">
+            <label for="timeInput">时间</label>
+            <input class="form-input" id="timeInput" type="time" autocomplete="off" required aria-describedby="timeHint timeError">
+          </div>
+        </div>
+        <p class="field-hint" id="timeHint">按北京时间记录</p>
+        <p class="field-error" id="timeError" role="alert" hidden></p>
+
+        <p class="form-error" id="formError" role="alert" hidden></p>
+
+        <div class="sheet-actions">
+          <button class="primary-button save-record-button" id="saveRecordButton" type="submit">保存</button>
+          <button class="delete-record-link" id="deleteRecordButton" type="button" hidden>删除这笔</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <!-- 二次确认 -->
+  <div class="overlay confirm-layer" id="confirmLayer" hidden>
+    <div class="overlay-backdrop" id="confirmBackdrop"></div>
+    <section class="confirm-dialog" id="confirmDialog" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
+      <h2 id="confirmTitle">确认操作</h2>
+      <p class="confirm-message" id="confirmMessage"></p>
+      <div class="confirm-input-wrap" id="confirmInputWrap" hidden>
+        <label for="confirmInput" id="confirmInputLabel">请输入“清空”</label>
+        <input id="confirmInput" type="text" autocomplete="off" spellcheck="false">
+      </div>
+      <p class="confirm-error" id="confirmError" role="alert" hidden></p>
+      <div class="confirm-actions">
+        <button class="secondary-button" id="confirmCancelButton" type="button">取消</button>
+        <button class="confirm-accept" id="confirmAcceptButton" type="button">确认</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <noscript>
+    <p class="noscript-note">一页账需要 JavaScript 才能记账和保存数据，请在浏览器设置中启用后重新打开。</p>
+  </noscript>
+
+  <script>
+    (() => {
+      'use strict';
+
+      /* ============================================================
+       * 常量与基础工具
+       * 金额内部统一使用「整数分」，日期都按 Asia/Shanghai 计算。
+       * ============================================================ */
+      const TIME_ZONE = 'Asia/Shanghai';
+      const STORAGE_KEY = 'ledger-v1';
+      const SCHEMA_VERSION = 1;
+      const BACKUP_FORMAT = 'one-page-ledger-backup';
+      const OTHER_CATEGORY_ID = 'other';
+      const OTHER_CATEGORY_NAME = '其他';
+      const NOTE_MAX_LENGTH = 200;
+      const CATEGORY_NAME_MAX_LENGTH = 12;
+      const MAX_RECORDS = 20000;
+      const MAX_CATEGORIES = 80;
+      const MAX_IMPORT_BYTES = 6 * 1024 * 1024;
+      const DAY_MS = 86400000;
+      const NOON_HOUR = 12;
+      const NOON_CUTOFF_TIME = '12:00:00';
+
+      const DEFAULT_CATEGORIES = [
+        { id: 'food', name: '餐饮' },
+        { id: 'transport', name: '交通' },
+        { id: 'study', name: '学习' },
+        { id: 'shopping', name: '购物' },
+        { id: 'entertainment', name: '娱乐' },
+        { id: 'life', name: '生活' },
+        { id: 'rent', name: '房租' },
+        { id: OTHER_CATEGORY_ID, name: OTHER_CATEGORY_NAME }
+      ];
+
+      const beijingFormatter = new Intl.DateTimeFormat('en-GB', {
+        timeZone: TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hourCycle: 'h23'
+      });
+
+      const byId = (id) => document.getElementById(id);
+      const dom = {
+        appRoot: byId('appRoot'),
+        skipLink: document.querySelector('.skip-link'),
+        settingsButton: byId('settingsButton'),
+        balanceCard: byId('balanceCard'),
+        todayCard: byId('todayCard'),
+        noonCard: byId('noonCard'),
+        recentList: byId('recentList'),
+        allRecordsButton: byId('allRecordsButton'),
+        weeklyChart: byId('weeklyChart'),
+        categoryBreakdown: byId('categoryBreakdown'),
+        categoryTotal: byId('categoryTotal'),
+        addRecordButton: byId('addRecordButton'),
+
+        recordsView: byId('recordsView'),
+        recordsPanel: byId('recordsPanel'),
+        recordsBackButton: byId('recordsBackButton'),
+        recordsContent: byId('recordsContent'),
+        filterSearch: byId('filterSearch'),
+        filterCategory: byId('filterCategory'),
+        filterFrom: byId('filterFrom'),
+        filterTo: byId('filterTo'),
+        resetFiltersButton: byId('resetFiltersButton'),
+        filterError: byId('filterError'),
+        recordsResultCount: byId('recordsResultCount'),
+        allRecordsList: byId('allRecordsList'),
+
+        summariesView: byId('summariesView'),
+        summariesPanel: byId('summariesPanel'),
+        summariesBackButton: byId('summariesBackButton'),
+        summaryList: byId('summaryList'),
+
+        settingsView: byId('settingsView'),
+        settingsPanel: byId('settingsPanel'),
+        settingsBackButton: byId('settingsBackButton'),
+        settingsContent: byId('settingsContent'),
+        initialBalanceInput: byId('initialBalanceInput'),
+        budgetInput: byId('budgetInput'),
+        saveFundsButton: byId('saveFundsButton'),
+        fundsError: byId('fundsError'),
+        categoryCount: byId('categoryCount'),
+        categoryList: byId('categoryList'),
+        addCategoryForm: byId('addCategoryForm'),
+        newCategoryInput: byId('newCategoryInput'),
+        categoryError: byId('categoryError'),
+        noonSwitch: byId('noonSwitch'),
+        dataSummary: byId('dataSummary'),
+        exportJsonButton: byId('exportJsonButton'),
+        exportCsvButton: byId('exportCsvButton'),
+        importJsonButton: byId('importJsonButton'),
+        clearDataButton: byId('clearDataButton'),
+        dataStatus: byId('dataStatus'),
+        importFileInput: byId('importFileInput'),
+
+        recordLayer: byId('recordLayer'),
+        recordBackdrop: byId('recordBackdrop'),
+        recordDialog: byId('recordDialog'),
+        recordTitle: byId('recordTitle'),
+        recordCloseButton: byId('recordCloseButton'),
+        recordForm: byId('recordForm'),
+        amountEntry: byId('amountEntry'),
+        amountInput: byId('amountInput'),
+        amountError: byId('amountError'),
+        categoryPicker: byId('categoryPicker'),
+        entryCategoryError: byId('entryCategoryError'),
+        noteInput: byId('noteInput'),
+        dateInput: byId('dateInput'),
+        timeInput: byId('timeInput'),
+        timeHint: byId('timeHint'),
+        timeError: byId('timeError'),
+        formError: byId('formError'),
+        saveRecordButton: byId('saveRecordButton'),
+        deleteRecordButton: byId('deleteRecordButton'),
+
+        confirmLayer: byId('confirmLayer'),
+        confirmBackdrop: byId('confirmBackdrop'),
+        confirmDialog: byId('confirmDialog'),
+        confirmTitle: byId('confirmTitle'),
+        confirmMessage: byId('confirmMessage'),
+        confirmInputWrap: byId('confirmInputWrap'),
+        confirmInputLabel: byId('confirmInputLabel'),
+        confirmInput: byId('confirmInput'),
+        confirmError: byId('confirmError'),
+        confirmCancelButton: byId('confirmCancelButton'),
+        confirmAcceptButton: byId('confirmAcceptButton'),
+
+        toast: byId('toast')
+      };
+
+      const SUBPAGES = {
+        records: {
+          element: dom.recordsView,
+          panel: dom.recordsPanel,
+          back: dom.recordsBackButton,
+          scroll: dom.recordsContent
+        },
+        summaries: {
+          element: dom.summariesView,
+          panel: dom.summariesPanel,
+          back: dom.summariesBackButton,
+          scroll: dom.summariesPanel.querySelector('.subpage-scroll')
+        },
+        settings: {
+          element: dom.settingsView,
+          panel: dom.settingsPanel,
+          back: dom.settingsBackButton,
+          scroll: dom.settingsContent
+        }
+      };
+
+      let state = createDefaultState();
+      let activeSubpage = null;
+      let lastFocusedBeforeSubpage = null;
+      let lastFocusedBeforeRecord = null;
+      let recordMode = 'create';
+      let editingRecordId = null;
+      let selectedEntryType = 'expense';
+      let selectedCategoryId = null;
+      let recordCommitted = false;
+      let isSavingRecord = false;
+      let isSavingSettings = false;
+      let isImporting = false;
+      let categoryEditingId = null;
+      let expandedSummaryDate = null;
+      let filterState = { keyword: '', categoryId: 'all', from: '', to: '' };
+      let confirmConfig = null;
+      let confirmBusy = false;
+      let confirmReturnFocus = null;
+      let confirmCloseTimer = null;
+      let recordCloseTimer = null;
+      let subpageCloseTimer = null;
+      let toastTimer = null;
+      let noonTimer = null;
+      let midnightTimer = null;
+      let resizeTimer = null;
+      let lastFocusedBeforeConfirm = null;
+
+      function pad2(value) {
+        return String(value).padStart(2, '0');
+      }
+
+      function escapeHTML(value) {
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function beijingParts(input = Date.now()) {
+        const date = input instanceof Date ? input : new Date(input);
+        const parts = {};
+        for (const part of beijingFormatter.formatToParts(date)) {
+          if (part.type !== 'literal') parts[part.type] = part.value;
+        }
+        const year = Number(parts.year);
+        const month = Number(parts.month);
+        const day = Number(parts.day);
+        const hour = Number(parts.hour) % 24;
+        const minute = Number(parts.minute);
+        const second = Number(parts.second);
+        return {
+          year,
+          month,
+          day,
+          hour,
+          minute,
+          second,
+          dateKey: `${String(year).padStart(4, '0')}-${pad2(month)}-${pad2(day)}`,
+          dateTimeKey: `${String(year).padStart(4, '0')}-${pad2(month)}-${pad2(day)}T${pad2(hour)}:${pad2(minute)}:${pad2(second)}+08:00`
+        };
+      }
+
+      function nowDateKey() {
+        return beijingParts().dateKey;
+      }
+
+      function currentMonthKey() {
+        return nowDateKey().slice(0, 7);
+      }
+
+      function nowBeijingISO() {
+        return beijingParts().dateTimeKey;
+      }
+
+      function shiftDateKey(dateKey, days) {
+        const [year, month, day] = dateKey.split('-').map(Number);
+        const date = new Date(Date.UTC(year, month - 1, day + days));
+        return `${String(date.getUTCFullYear()).padStart(4, '0')}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}`;
+      }
+
+      function daysBetweenDateKeys(fromKey, toKey) {
+        const [fy, fm, fd] = fromKey.split('-').map(Number);
+        const [ty, tm, td] = toKey.split('-').map(Number);
+        return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / DAY_MS);
+      }
+
+      function isValidDateKey(dateKey) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return false;
+        const [year, month, day] = dateKey.split('-').map(Number);
+        if (year < 1900 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) return false;
+        const date = new Date(Date.UTC(year, month - 1, day));
+        return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+      }
+
+      function isValidRecordAt(value) {
+        if (typeof value !== 'string') return false;
+        const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})\+08:00$/.exec(value);
+        if (!match) return false;
+        if (!isValidDateKey(match[1])) return false;
+        const hour = Number(match[2]);
+        const minute = Number(match[3]);
+        const second = Number(match[4]);
+        if (hour > 23 || minute > 59 || second > 59) return false;
+        return Number.isFinite(Date.parse(value));
+      }
+
+      function dateKeyFromRecord(record) {
+        return record.at.slice(0, 10);
+      }
+
+      function clockFromRecord(record) {
+        return record.at.slice(11, 16);
+      }
+
+      function noonTimestamp(dateKey) {
+        return Date.parse(`${dateKey}T${NOON_CUTOFF_TIME}+08:00`);
+      }
+
+      function isNoonPassed(dateKey, atMs = Date.now()) {
+        return atMs >= noonTimestamp(dateKey);
+      }
+
+      function formatMoment(at, todayKey) {
+        const dateKey = at.slice(0, 10);
+        const time = at.slice(11, 16);
+        if (dateKey === todayKey) return `今天 ${time}`;
+        if (dateKey === shiftDateKey(todayKey, -1)) return `昨天 ${time}`;
+        const month = Number(dateKey.slice(5, 7));
+        const day = Number(dateKey.slice(8, 10));
+        const year = Number(dateKey.slice(0, 4));
+        if (year === Number(todayKey.slice(0, 4))) return `${month}月${day}日 ${time}`;
+        return `${year}年${month}月${day}日 ${time}`;
+      }
+
+      function formatGroupDate(dateKey, todayKey) {
+        const month = Number(dateKey.slice(5, 7));
+        const day = Number(dateKey.slice(8, 10));
+        const year = Number(dateKey.slice(0, 4));
+        if (dateKey === todayKey) return `今天 · ${month}月${day}日`;
+        if (dateKey === shiftDateKey(todayKey, -1)) return `昨天 · ${month}月${day}日`;
+        if (year === Number(todayKey.slice(0, 4))) return `${month}月${day}日`;
+        return `${year}年${month}月${day}日`;
+      }
+
+      function formatFullDateLabel(dateKey) {
+        const year = Number(dateKey.slice(0, 4));
+        const month = Number(dateKey.slice(5, 7));
+        const day = Number(dateKey.slice(8, 10));
+        return `${year}年${month}月${day}日`;
+      }
+
+      function formatShortDate(dateKey) {
+        return `${Number(dateKey.slice(5, 7))}/${Number(dateKey.slice(8, 10))}`;
+      }
+
+      function formatExportStamp(ms = Date.now()) {
+        const parts = beijingParts(ms);
+        return {
+          date: `${parts.year}${pad2(parts.month)}${pad2(parts.day)}`,
+          month: `${parts.year}${pad2(parts.month)}`,
+          time: `${pad2(parts.hour)}${pad2(parts.minute)}`
+        };
+      }
+
+      function parseRecordDateTime(dateValue, timeValue) {
+        if (!dateValue) return { ok: false, field: 'date', error: '请选择日期。' };
+        if (!isValidDateKey(dateValue)) return { ok: false, field: 'date', error: '请选择有效日期。' };
+        if (!/^\d{2}:\d{2}$/.test(timeValue || '')) return { ok: false, field: 'time', error: '请选择时间。' };
+        const hour = Number(timeValue.slice(0, 2));
+        const minute = Number(timeValue.slice(3, 5));
+        if (hour > 23 || minute > 59) return { ok: false, field: 'time', error: '请选择有效时间。' };
+        const at = `${dateValue}T${timeValue}:00+08:00`;
+        const timestamp = Date.parse(at);
+        if (!Number.isFinite(timestamp)) return { ok: false, field: 'time', error: '时间无法识别。' };
+        if (timestamp > Date.now()) return { ok: false, field: 'time', error: '记录时间不能晚于现在。' };
+        return { ok: true, at, timestamp };
+      }
+
+      /* ============================================================
+       * 金额工具（整数分）
+       * ============================================================ */
+      function absCents(cents) {
+        return Math.abs(Number(cents) || 0);
+      }
+
+      function formatThousands(integer) {
+        return String(integer).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      }
+
+      function formatCentsNumber(cents) {
+        const value = absCents(cents);
+        return `${formatThousands(Math.floor(value / 100))}.${pad2(value % 100)}`;
+      }
+
+      function formatYuan(cents) {
+        return `¥${formatCentsNumber(cents)}`;
+      }
+
+      function formatBalance(cents) {
+        return `${cents < 0 ? '-' : ''}¥${formatCentsNumber(cents)}`;
+      }
+
+      function formatSignedMoney(record) {
+        return `${record.type === 'expense' ? '-' : '+'}¥${formatCentsNumber(record.amountCents)}`;
+      }
+
+      function formatInputMoney(cents, allowNegative = false) {
+        if (cents === null || cents === undefined) return '';
+        const sign = allowNegative && cents < 0 ? '-' : '';
+        return `${sign}${formatCentsNumber(cents)}`;
+      }
+
+      function parseMoneyCents(raw, options = {}) {
+        const { allowNegative = false, allowZero = false, fieldLabel = '金额' } = options;
+        let text = String(raw == null ? '' : raw).trim();
+        if (!text) return { ok: false, error: `请输入${fieldLabel}。` };
+        text = text.replace(/[，,]/g, '.');
+        let negative = false;
+        if (/^[−-]/.test(text)) {
+          negative = true;
+          text = text.slice(1).trim();
+        } else if (text.startsWith('+')) {
+          text = text.slice(1).trim();
+        }
+        if (text.startsWith('.')) text = `0${text}`;
+        if (!/^\d+(?:\.\d{1,2})?$/.test(text)) {
+          return { ok: false, error: `${fieldLabel}最多保留两位小数。` };
+        }
+        const [wholeRaw, fractionRaw = ''] = text.split('.');
+        const whole = Number(wholeRaw);
+        if (!Number.isSafeInteger(whole)) return { ok: false, error: `${fieldLabel}数值过大。` };
+        const fraction = Number(fractionRaw.padEnd(2, '0'));
+        const value = whole * 100 + fraction;
+        if (!Number.isSafeInteger(value)) return { ok: false, error: `${fieldLabel}数值过大。` };
+        if (negative && !allowNegative) return { ok: false, error: `${fieldLabel}不能为负数。` };
+        const signed = negative ? -value : value;
+        if (signed === 0 && !allowZero) return { ok: false, error: `${fieldLabel}必须大于 0。` };
+        return { ok: true, cents: signed };
+      }
+
+      function formatChartAmount(cents) {
+        const yuan = absCents(cents) / 100;
+        if (yuan >= 10000) {
+          const wan = yuan / 10000;
+          return `¥${wan.toFixed(wan >= 100 ? 0 : 1).replace(/\.0$/, '')}万`;
+        }
+        return `¥${formatCentsNumber(cents).replace(/,/g, '')}`;
+      }
+
+      function formatPercent(part, total) {
+        if (!total) return '0%';
+        const percent = (part / total) * 100;
+        return `${percent.toFixed(percent >= 99.95 ? 0 : 1).replace(/\.0$/, '')}%`;
+      }
+
+      /* ============================================================
+       * 分类工具
+       * ============================================================ */
+      function cloneDefaultCategories() {
+        return DEFAULT_CATEGORIES.map((category) => ({ ...category }));
+      }
+
+      function categoryMapFor(sourceState) {
+        return new Map(sourceState.settings.categories.map((category) => [category.id, category]));
+      }
+
+      function categoryNameFor(sourceState, categoryId) {
+        const category = sourceState.settings.categories.find((item) => item.id === categoryId);
+        return category ? category.name : OTHER_CATEGORY_NAME;
+      }
+
+      function categoryOrderFor(sourceState, categoryId) {
+        return sourceState.settings.categories.findIndex((item) => item.id === categoryId);
+      }
+
+      function categoryUsageCount(sourceState, categoryId) {
+        return sourceState.records.reduce((count, record) => count + (record.categoryId === categoryId ? 1 : 0), 0);
+      }
+
+      function makeCategoryId() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+          return `cat-${window.crypto.randomUUID()}`;
+        }
+        return `cat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+      }
+
+      function makeRecordId() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+          return window.crypto.randomUUID();
+        }
+        return `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+      }
+
+      function validateCategoryName(sourceState, rawName, currentId = null) {
+        const name = String(rawName || '').trim();
+        if (!name) return { ok: false, error: '分类名称不能为空。' };
+        if (name.length > CATEGORY_NAME_MAX_LENGTH) {
+          return { ok: false, error: `分类名称最多 ${CATEGORY_NAME_MAX_LENGTH} 个字。` };
+        }
+        const normalized = name.toLocaleLowerCase('zh-CN');
+        const duplicate = sourceState.settings.categories.some((category) =>
+          category.id !== currentId && category.name.toLocaleLowerCase('zh-CN') === normalized
+        );
+        if (duplicate) return { ok: false, error: '已经有同名分类了。' };
+        return { ok: true, name };
+      }
+
+      /* ============================================================
+       * 状态创建、校验与存储
+       * ============================================================ */
+      function createDefaultState() {
+        return {
+          version: SCHEMA_VERSION,
+          records: [],
+          summaries: [],
+          settings: {
+            initialBalanceCents: 0,
+            monthlyBudgetCents: null,
+            noonSummaryEnabled: true,
+            categories: cloneDefaultCategories()
+          }
+        };
+      }
+
+      function cloneState(source) {
+        return {
+          version: SCHEMA_VERSION,
+          records: source.records.map((record) => ({ ...record })),
+          summaries: source.summaries.map((summary) => ({ ...summary })),
+          settings: {
+            initialBalanceCents: source.settings.initialBalanceCents,
+            monthlyBudgetCents: source.settings.monthlyBudgetCents,
+            noonSummaryEnabled: source.settings.noonSummaryEnabled,
+            categories: source.settings.categories.map((category) => ({ ...category }))
+          }
+        };
+      }
+
+      function assertData(condition, message) {
+        if (!condition) throw new Error(message);
+      }
+
+      function normalizeState(input) {
+        assertData(input && typeof input === 'object' && !Array.isArray(input), '数据格式不正确。');
+        assertData(Array.isArray(input.records), '缺少账目列表。');
+        assertData(input.records.length <= MAX_RECORDS, `账目数量超过 ${MAX_RECORDS} 条上限。`);
+        assertData(input.settings && typeof input.settings === 'object' && !Array.isArray(input.settings), '设置数据格式不正确。');
+
+        const rawCategories = input.settings.categories;
+        assertData(Array.isArray(rawCategories) && rawCategories.length > 0, '缺少分类数据。');
+        assertData(rawCategories.length <= MAX_CATEGORIES, `分类数量超过 ${MAX_CATEGORIES} 个上限。`);
+        const categoryIds = new Set();
+        const categoryNames = new Set();
+        const categories = rawCategories.map((category, index) => {
+          const prefix = `第 ${index + 1} 个分类`;
+          assertData(category && typeof category === 'object' && !Array.isArray(category), `${prefix}格式不正确。`);
+          assertData(typeof category.id === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(category.id), `${prefix}编号格式不正确。`);
+          assertData(!categoryIds.has(category.id), `${prefix}编号重复。`);
+          categoryIds.add(category.id);
+          const name = typeof category.name === 'string' ? category.name.trim() : '';
+          assertData(name && name.length <= CATEGORY_NAME_MAX_LENGTH, `${prefix}名称格式不正确。`);
+          const normalizedName = name.toLocaleLowerCase('zh-CN');
+          assertData(!categoryNames.has(normalizedName), `${prefix}名称重复。`);
+          categoryNames.add(normalizedName);
+          return { id: category.id, name };
+        });
+        const otherCategory = categories.find((category) => category.id === OTHER_CATEGORY_ID);
+        assertData(otherCategory && otherCategory.name === OTHER_CATEGORY_NAME, '分类中必须保留“其他”。');
+
+        const recordIds = new Set();
+        const records = input.records.map((record, index) => {
+          const prefix = `第 ${index + 1} 笔账目`;
+          assertData(record && typeof record === 'object' && !Array.isArray(record), `${prefix}格式不正确。`);
+          assertData(typeof record.id === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(record.id), `${prefix}编号格式不正确。`);
+          assertData(!recordIds.has(record.id), `${prefix}编号重复。`);
+          recordIds.add(record.id);
+          assertData(record.type === 'expense' || record.type === 'income', `${prefix}收支类型不正确。`);
+          assertData(Number.isSafeInteger(record.amountCents) && record.amountCents > 0, `${prefix}金额格式不正确。`);
+          assertData(categoryIds.has(record.categoryId), `${prefix}使用了不存在的分类。`);
+          assertData(typeof record.note === 'string' && record.note.length <= NOTE_MAX_LENGTH, `${prefix}备注格式不正确。`);
+          assertData(isValidRecordAt(record.at), `${prefix}时间格式不正确。`);
+          let createdAt = record.createdAt;
+          if (createdAt === undefined || createdAt === null) createdAt = Date.parse(record.at);
+          assertData(Number.isSafeInteger(createdAt) && createdAt >= 0, `${prefix}创建时间格式不正确。`);
+          return {
+            id: record.id,
+            type: record.type,
+            amountCents: record.amountCents,
+            categoryId: record.categoryId,
+            note: record.note,
+            at: record.at,
+            createdAt
+          };
+        });
+
+        assertData(Array.isArray(input.summaries), '缺少 12:00 汇总列表。');
+        assertData(input.summaries.length <= MAX_RECORDS, '汇总数量异常。');
+        const summaryDates = new Set();
+        const summaries = input.summaries.map((summary, index) => {
+          const prefix = `第 ${index + 1} 条汇总`;
+          assertData(summary && typeof summary === 'object' && !Array.isArray(summary), `${prefix}格式不正确。`);
+          assertData(typeof summary.date === 'string' && isValidDateKey(summary.date), `${prefix}日期格式不正确。`);
+          assertData(!summaryDates.has(summary.date), `${prefix}日期重复。`);
+          summaryDates.add(summary.date);
+          assertData(Number.isSafeInteger(summary.amountCents) && summary.amountCents >= 0, `${prefix}金额格式不正确。`);
+          assertData(Number.isSafeInteger(summary.count) && summary.count >= 0, `${prefix}笔数格式不正确。`);
+          assertData(summary.count > 0 ? summary.amountCents > 0 : summary.amountCents === 0, `${prefix}金额与笔数不一致。`);
+          assertData(summary.topCategoryId === null || categoryIds.has(summary.topCategoryId), `${prefix}最大分类不存在。`);
+          assertData(summary.count > 0 ? typeof summary.topCategoryId === 'string' : summary.topCategoryId === null, `${prefix}最大分类格式不正确。`);
+          return {
+            date: summary.date,
+            amountCents: summary.amountCents,
+            count: summary.count,
+            topCategoryId: summary.topCategoryId
+          };
+        });
+        summaries.sort((a, b) => a.date.localeCompare(b.date));
+
+        const settings = input.settings;
+        assertData(Number.isSafeInteger(settings.initialBalanceCents), '初始余额格式不正确。');
+        assertData(
+          settings.monthlyBudgetCents === null ||
+          (Number.isSafeInteger(settings.monthlyBudgetCents) && settings.monthlyBudgetCents > 0),
+          '月预算格式不正确。'
+        );
+        assertData(typeof settings.noonSummaryEnabled === 'boolean', '12:00 汇总开关格式不正确。');
+
+        return {
+          version: SCHEMA_VERSION,
+          records,
+          summaries,
+          settings: {
+            initialBalanceCents: settings.initialBalanceCents,
+            monthlyBudgetCents: settings.monthlyBudgetCents,
+            noonSummaryEnabled: settings.noonSummaryEnabled,
+            categories
+          }
+        };
+      }
+
+      function migrateState(input) {
+        assertData(input && typeof input === 'object' && !Array.isArray(input), '数据格式不正确。');
+        const version = Number(input.version);
+        assertData(Number.isInteger(version) && version >= 1, '数据版本无效。');
+        assertData(version <= SCHEMA_VERSION, '数据版本高于当前应用，无法读取。');
+        // 迁移预留：未来升级 SCHEMA_VERSION 时在此按版本升级字段。
+        if (version < SCHEMA_VERSION) {
+          // 目前 v1 为首个版本，无旧版迁移。
+        }
+        return normalizeState(input);
+      }
+
+      function readInitialState() {
+        let raw = null;
+        try {
+          raw = window.localStorage.getItem(STORAGE_KEY);
+        } catch (error) {
+          return { state: createDefaultState(), error: '本机存储暂不可用，修改可能无法保存。' };
+        }
+        if (raw === null) return { state: createDefaultState(), error: '' };
+        try {
+          return { state: migrateState(JSON.parse(raw)), error: '' };
+        } catch (error) {
+          return { state: createDefaultState(), error: '本地账本读取失败，已按空白账本启动。' };
+        }
+      }
+
+      function commitState(nextState) {
+        try {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+        } catch (error) {
+          return false;
+        }
+        state = nextState;
+        return true;
+      }
+
+      /* ============================================================
+       * 12:00 汇总计算
+       * ============================================================ */
+      function buildPreNoonAggregates(sourceState) {
+        const aggregate = new Map();
+        for (const record of sourceState.records) {
+          if (record.type !== 'expense') continue;
+          const date = dateKeyFromRecord(record);
+          const time = record.at.slice(11, 19);
+          if (time > NOON_CUTOFF_TIME) continue;
+          if (!aggregate.has(date)) {
+            aggregate.set(date, { amountCents: 0, count: 0, byCategory: new Map() });
+          }
+          const entry = aggregate.get(date);
+          entry.amountCents += record.amountCents;
+          entry.count += 1;
+          entry.byCategory.set(record.categoryId, (entry.byCategory.get(record.categoryId) || 0) + record.amountCents);
+        }
+        return aggregate;
+      }
+
+      /**
+       * 重算已有的汇总，并在允许时补齐缺失日期。
+       * 日期范围：最早一笔账目的日期 → 北京时间今天；没有账目时不主动创造空汇总。
+       * 只统计当天 12:00:00 之前（含 12:00）的支出。
+       */
+      function reconcileSummaries(sourceState, options = {}) {
+        const { generateMissing = sourceState.settings.noonSummaryEnabled, atMs = Date.now() } = options;
+        const todayKey = beijingParts(atMs).dateKey;
+        const dates = new Set();
+
+        for (const summary of sourceState.summaries) {
+          if (summary.date <= todayKey && isValidDateKey(summary.date) && isNoonPassed(summary.date, atMs)) {
+            dates.add(summary.date);
+          }
+        }
+
+        if (generateMissing && sourceState.records.length > 0) {
+          let earliest = null;
+          for (const record of sourceState.records) {
+            const key = dateKeyFromRecord(record);
+            if (!earliest || key < earliest) earliest = key;
+          }
+          if (earliest) {
+            let date = earliest;
+            let guard = 0;
+            while (date <= todayKey && guard < MAX_RECORDS) {
+              if (isNoonPassed(date, atMs)) dates.add(date);
+              date = shiftDateKey(date, 1);
+              guard += 1;
+            }
+          }
+        }
+
+        const aggregates = buildPreNoonAggregates(sourceState);
+        const result = [];
+        for (const date of Array.from(dates).sort()) {
+          const data = aggregates.get(date) || { amountCents: 0, count: 0, byCategory: new Map() };
+          let topCategoryId = null;
+          let topAmount = -1;
+          for (const category of sourceState.settings.categories) {
+            const categoryAmount = data.byCategory.get(category.id) || 0;
+            if (data.count > 0 && categoryAmount > topAmount) {
+              topAmount = categoryAmount;
+              topCategoryId = category.id;
+            }
+          }
+          if (data.count === 0) topCategoryId = null;
+          result.push({
+            date,
+            amountCents: data.amountCents,
+            count: data.count,
+            topCategoryId
+          });
+        }
+
+        // 保留原对象类型，但确保只返回规范字段，避免旧扩展字段混入。
+        return result;
+      }
+
+      function summariesChanged(left, right) {
+        if (left.length !== right.length) return true;
+        for (let index = 0; index < left.length; index += 1) {
+          const a = left[index];
+          const b = right[index];
+          if (
+            a.date !== b.date ||
+            a.amountCents !== b.amountCents ||
+            a.count !== b.count ||
+            a.topCategoryId !== b.topCategoryId
+          ) return true;
+        }
+        return false;
+      }
+
+      function applySummaryReconciliation(nextState, { generateMissing = nextState.settings.noonSummaryEnabled, atMs = Date.now() } = {}) {
+        const nextSummaries = reconcileSummaries(nextState, { generateMissing, atMs });
+        if (summariesChanged(nextState.summaries, nextSummaries)) {
+          nextState.summaries = nextSummaries;
+        }
+        return nextState;
+      }
+
+      function syncSummariesAndPersist({ silent = true } = {}) {
+        if (!state.settings.noonSummaryEnabled) return false;
+        const next = cloneState(state);
+        next.summaries = reconcileSummaries(next, { generateMissing: true });
+        if (!summariesChanged(state.summaries, next.summaries)) return false;
+        if (!commitState(next)) {
+          if (!silent) showToast('汇总保存失败，本机存储不可用');
+          return false;
+        }
+        return true;
+      }
+
+      /* ============================================================
+       * 派生数据
+       * ============================================================ */
+      function sortedRecordsAscending() {
+        return state.records.slice().sort((a, b) => {
+          const atA = Date.parse(a.at);
+          const atB = Date.parse(b.at);
+          if (atA !== atB) return atA - atB;
+          if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
+          return a.id.localeCompare(b.id);
+        });
+      }
+
+      function sortedRecordsDescending() {
+        return sortedRecordsAscending().reverse();
+      }
+
+      function sumAmount(records) {
+        return records.reduce((sum, record) => sum + record.amountCents, 0);
+      }
+
+      function expensesIn(records) {
+        return records.filter((record) => record.type === 'expense');
+      }
+
+      function incomesIn(records) {
+        return records.filter((record) => record.type === 'income');
+      }
+
+      function recordsForDate(dateKey) {
+        return sortedRecordsDescending().filter((record) => dateKeyFromRecord(record) === dateKey);
+      }
+
+      function getTodayExpenses() {
+        const todayKey = nowDateKey();
+        return expensesIn(state.records.filter((record) => dateKeyFromRecord(record) === todayKey));
+      }
+
+      function getMonthRecords(monthKey = currentMonthKey()) {
+        return state.records.filter((record) => dateKeyFromRecord(record).startsWith(monthKey));
+      }
+
+      function getBalanceCents() {
+        return state.settings.initialBalanceCents + sumAmount(incomesIn(state.records)) - sumAmount(expensesIn(state.records));
+      }
+
+      function getYesterdayToTodayWeek() {
+        const todayKey = nowDateKey();
+        const days = [];
+        for (let offset = 6; offset >= 0; offset -= 1) {
+          const date = shiftDateKey(todayKey, -offset);
+          const totalCents = sumAmount(expensesIn(state.records.filter((record) => dateKeyFromRecord(record) === date)));
+          days.push({ date, totalCents, isToday: date === todayKey });
+        }
+        return days;
+      }
+
+      function getCategorySharesForMonth(sourceState = state, monthKey = currentMonthKey()) {
+        const totals = new Map();
+        let totalCents = 0;
+        for (const record of sourceState.records) {
+          if (record.type !== 'expense') continue;
+          if (!dateKeyFromRecord(record).startsWith(monthKey)) continue;
+          totals.set(record.categoryId, (totals.get(record.categoryId) || 0) + record.amountCents);
+          totalCents += record.amountCents;
+        }
+        const order = new Map(sourceState.settings.categories.map((category, index) => [category.id, index]));
+        return {
+          totalCents,
+          rows: Array.from(totals.entries())
+            .map(([categoryId, amountCents]) => ({
+              categoryId,
+              name: categoryNameFor(sourceState, categoryId),
+              amountCents,
+              share: totalCents ? amountCents / totalCents : 0
+            }))
+            .sort((a, b) => b.amountCents - a.amountCents || order.get(a.categoryId) - order.get(b.categoryId))
+        };
+      }
+
+      function getTodaySummary() {
+        const todayKey = nowDateKey();
+        return state.summaries.find((summary) => summary.date === todayKey) || null;
+      }
+
+      /* ============================================================
+       * 首页渲染
+       * ============================================================ */
+      function renderHome() {
+        renderBalanceCard();
+        renderTodayCard();
+        renderNoonCard();
+        renderRecentList();
+        renderWeeklyChart();
+        renderCategoryBreakdown();
+      }
+
+      function renderBalanceCard() {
+        const monthRecords = getMonthRecords();
+        const monthExpense = sumAmount(expensesIn(monthRecords));
+        const monthIncome = sumAmount(incomesIn(monthRecords));
+        const balance = getBalanceCents();
+        const budget = state.settings.monthlyBudgetCents;
+        const month = Number(currentMonthKey().slice(5, 7));
+        dom.balanceCard.classList.toggle('is-negative', balance < 0);
+
+        let budgetMarkup = '';
+        if (budget !== null && budget > 0) {
+          const over = monthExpense > budget;
+          const remaining = Math.abs(budget - monthExpense);
+          const percent = Math.min(100, Math.round((monthExpense / budget) * 100));
+          budgetMarkup = `
+            <div class="budget-block" role="progressbar" aria-label="本月预算使用进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" aria-valuetext="${over ? '已超预算' : '预算剩余'} ${formatYuan(remaining)}">
+              <div class="budget-copy">
+                <span>${over ? '已超预算' : '本月预算剩余'}</span>
+                <strong class="${over ? 'over' : ''}">${over ? '-' : ''}${formatYuan(remaining)}</strong>
+              </div>
+              <div class="budget-bar"><span class="budget-fill${over ? ' over' : ''}" style="width: ${percent}%"></span></div>
+            </div>
+          `;
+        }
+
+        dom.balanceCard.innerHTML = `
+          <div class="balance-top">
+            <h2 class="balance-label" id="balanceHeading">当前余额</h2>
+            <span class="balance-month">${month} 月</span>
+          </div>
+          <div class="balance-main" aria-label="当前余额 ${formatBalance(balance)}">
+            <span class="balance-currency">${balance < 0 ? '-' : ''}¥</span>
+            <span class="balance-number">${formatCentsNumber(balance)}</span>
+          </div>
+          <div class="balance-metrics">
+            <div class="balance-metric">
+              <span class="balance-metric-label">本月支出</span>
+              <span class="balance-metric-value expense">-${formatYuan(monthExpense)}</span>
+            </div>
+            <div class="balance-metric">
+              <span class="balance-metric-label">本月收入</span>
+              <span class="balance-metric-value income">+${formatYuan(monthIncome)}</span>
+            </div>
+          </div>
+          ${budgetMarkup}
+        `;
+      }
+
+      function renderTodayCard() {
+        const todayExpenses = getTodayExpenses();
+        const total = sumAmount(todayExpenses);
+        const count = todayExpenses.length;
+        dom.todayCard.innerHTML = `
+          <div class="today-head">
+            <h2 class="card-title" id="todayHeading">今日消费</h2>
+            <span class="today-count">${count} 笔</span>
+          </div>
+          <div class="today-amount-line">
+            <span class="today-amount" aria-label="今日消费 ${formatYuan(total)}">${formatYuan(total)}</span>
+          </div>
+        `;
+      }
+
+      function renderNoonCard() {
+        if (!state.settings.noonSummaryEnabled) {
+          dom.noonCard.hidden = true;
+          dom.noonCard.innerHTML = '';
+          return;
+        }
+        const nowMs = Date.now();
+        const parts = beijingParts(nowMs);
+        const todayKey = parts.dateKey;
+        const afterNoon = nowMs >= noonTimestamp(todayKey);
+        const todaySummary = state.summaries.find((summary) => summary.date === todayKey) || null;
+        const useSnapshot = afterNoon && Boolean(todaySummary);
+        const liveExpenses = getTodayExpenses();
+        const amount = useSnapshot ? todaySummary.amountCents : sumAmount(liveExpenses);
+        const count = useSnapshot ? todaySummary.count : liveExpenses.length;
+        const topCategoryId = useSnapshot ? todaySummary.topCategoryId : null;
+        const topCategoryName = topCategoryId ? categoryNameFor(state, topCategoryId) : '';
+        const statusText = useSnapshot ? '12:00 快照' : '今日实时';
+        const summaryLink = state.summaries.length
+          ? '<button class="text-link" type="button" data-open-summaries>全部</button>'
+          : '';
+        let metaMarkup = '';
+        if (useSnapshot) {
+          metaMarkup = `
+            <span>12:00</span>
+            <span class="meta-dot" aria-hidden="true"></span>
+            <span>${count} 笔</span>
+            ${topCategoryName ? `<span class="meta-dot" aria-hidden="true"></span><span>最大分类 ${escapeHTML(topCategoryName)}</span>` : '<span class="meta-dot" aria-hidden="true"></span><span>暂无支出</span>'}
+          `;
+        } else {
+          metaMarkup = `
+            <span>截至现在</span>
+            <span class="meta-dot" aria-hidden="true"></span>
+            <span>${count} 笔</span>
+            ${afterNoon ? '' : '<span class="meta-dot" aria-hidden="true"></span><span>12:00 生成快照</span>'}
+          `;
+        }
+
+        dom.noonCard.hidden = false;
+        dom.noonCard.innerHTML = `
+          <div class="noon-head">
+            <h2 class="card-title" id="noonHeading">12:00 汇总</h2>
+            ${summaryLink}
+          </div>
+          <div class="noon-body">
+            <span class="noon-status ${useSnapshot ? '' : 'is-live'}">${statusText}</span>
+            <div class="noon-amount-row">
+              <span class="noon-amount">${formatYuan(amount)}</span>
+            </div>
+            <div class="noon-meta">${metaMarkup}</div>
+          </div>
+        `;
+      }
+
+      function makeRecordAriaLabel(record, todayKey, includeDate = false) {
+        const categoryName = categoryNameFor(state, record.categoryId);
+        const parts = [];
+        if (includeDate) parts.push(formatMoment(record.at, todayKey));
+        else parts.push(clockFromRecord(record));
+        parts.push(categoryName);
+        if (record.note) parts.push(`备注：${record.note}`);
+        parts.push(`${record.type === 'expense' ? '支出' : '收入'} ${formatSignedMoney(record)}`);
+        parts.push('轻点查看、编辑或删除');
+        return parts.join('，');
+      }
+
+      function createRecordRow(record, options = {}) {
+        const { todayKey = nowDateKey(), showFullDate = true, className = 'recent-row' } = options;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = className;
+        button.dataset.recordId = record.id;
+        button.setAttribute('aria-label', makeRecordAriaLabel(record, todayKey, showFullDate));
+
+        const main = document.createElement('span');
+        main.className = 'recent-main';
+        const topLine = document.createElement('span');
+        topLine.className = 'recent-topline';
+        const category = document.createElement('span');
+        category.className = 'recent-category';
+        category.textContent = categoryNameFor(state, record.categoryId);
+        const time = document.createElement('span');
+        time.className = 'recent-time';
+        time.textContent = showFullDate ? formatMoment(record.at, todayKey) : clockFromRecord(record);
+        topLine.append(category, time);
+        main.append(topLine);
+        if (record.note) {
+          const note = document.createElement('span');
+          note.className = 'recent-note';
+          // 备注只通过 textContent 写入。
+          note.textContent = record.note;
+          main.append(note);
+        }
+
+        const amount = document.createElement('span');
+        amount.className = `recent-amount ${record.type}`;
+        amount.textContent = formatSignedMoney(record);
+        button.append(main, amount);
+        return button;
+      }
+
+      function renderRecentList() {
+        const todayKey = nowDateKey();
+        const recent = sortedRecordsDescending().slice(0, 8);
+        dom.recentList.textContent = '';
+        if (!recent.length) {
+          const empty = document.createElement('div');
+          empty.className = 'recent-empty';
+          const text = document.createElement('p');
+          text.textContent = '还没有账目。';
+          const action = document.createElement('button');
+          action.type = 'button';
+          action.className = 'empty-action';
+          action.dataset.addEntry = '1';
+          action.textContent = '记第一笔';
+          empty.append(text, action);
+          dom.recentList.append(empty);
+          return;
+        }
+        for (const record of recent) {
+          dom.recentList.append(createRecordRow(record, { todayKey, showFullDate: true }));
+        }
+      }
+
+      function renderWeeklyChart() {
+        const days = getYesterdayToTodayWeek();
+        const hasData = days.some((day) => day.totalCents > 0);
+        dom.weeklyChart.textContent = '';
+        if (!hasData) {
+          const empty = document.createElement('div');
+          empty.className = 'chart-empty';
+          const text = document.createElement('p');
+          text.textContent = '最近 7 天还没有支出。';
+          const action = document.createElement('button');
+          action.type = 'button';
+          action.className = 'empty-action';
+          action.dataset.addEntry = '1';
+          action.textContent = '记一笔';
+          empty.append(text, action);
+          dom.weeklyChart.append(empty);
+          return;
+        }
+        const holder = document.createElement('div');
+        holder.className = 'chart-holder';
+        holder.id = 'weeklyChartHolder';
+        dom.weeklyChart.append(holder);
+        drawWeeklyChart(days);
+      }
+
+      function drawWeeklyChart(days) {
+        const holder = byId('weeklyChartHolder');
+        if (!holder) return;
+        const width = Math.round(holder.getBoundingClientRect().width);
+        if (width < 80) {
+          if (!holder.dataset.retried) {
+            holder.dataset.retried = '1';
+            window.requestAnimationFrame(() => drawWeeklyChart(days));
+          }
+          return;
+        }
+
+        const height = 162;
+        const paddingX = 8;
+        const plotTop = 25;
+        const plotBottom = height - 30;
+        const plotHeight = plotBottom - plotTop;
+        const slot = (width - paddingX * 2) / 7;
+        const maxValue = Math.max(...days.map((day) => day.totalCents), 1);
+        const barWidth = Math.min(21, slot * 0.48);
+        const todayKey = nowDateKey();
+        const valueLabels = [];
+        const labelMarkup = [];
+        const barMarkup = [];
+
+        days.forEach((day, index) => {
+          const centerX = paddingX + slot * (index + 0.5);
+          const ratio = day.totalCents / maxValue;
+          const barHeight = day.totalCents > 0 ? Math.max(4, Math.round(plotHeight * ratio)) : 0;
+          const barTop = plotBottom - barHeight;
+          const label = formatChartAmount(day.totalCents);
+          const valueY = day.totalCents > 0 ? Math.max(12, barTop - 7) : plotBottom - 8;
+          valueLabels.push(`${formatShortDate(day.date)} ${formatYuan(day.totalCents)}`);
+          labelMarkup.push(`
+            <text class="bar-value${day.totalCents === 0 ? ' is-zero' : ''}" x="${centerX.toFixed(2)}" y="${valueY.toFixed(2)}" text-anchor="middle">${escapeHTML(label)}</text>
+          `);
+          if (day.totalCents > 0) {
+            barMarkup.push(`
+              <rect x="${(centerX - barWidth / 2).toFixed(2)}" y="${barTop.toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx="4" fill="${day.isToday ? '#8c3e31' : '#a34b3c'}">
+                <title>${escapeHTML(formatShortDate(day.date))} ${escapeHTML(formatYuan(day.totalCents))}</title>
+              </rect>
+            `);
+          }
+          labelMarkup.push(`
+            <text class="bar-label ${day.date === todayKey ? 'is-today' : ''}" x="${centerX.toFixed(2)}" y="${height - 7}" text-anchor="middle">${day.date === todayKey ? '今天' : escapeHTML(formatShortDate(day.date))}</text>
+          `);
+        });
+
+        const aria = `最近 7 天支出：${days.map((day) => `${formatShortDate(day.date)} ${formatYuan(day.totalCents)}`).join('，')}。`;
+        holder.innerHTML = `
+          <svg class="weekly-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHTML(aria)}">
+            <title>最近 7 天支出柱状图</title>
+            <line class="bar-baseline" x1="${paddingX}" y1="${plotBottom}" x2="${width - paddingX}" y2="${plotBottom}"></line>
+            ${barMarkup.join('')}
+            ${labelMarkup.join('')}
+          </svg>
+        `;
+      }
+
+      function renderCategoryBreakdown() {
+        const { totalCents, rows } = getCategorySharesForMonth();
+        dom.categoryTotal.textContent = totalCents ? formatYuan(totalCents) : '';
+        dom.categoryBreakdown.textContent = '';
+        if (!rows.length) {
+          const empty = document.createElement('div');
+          empty.className = 'category-empty';
+          const text = document.createElement('p');
+          text.textContent = '本月还没有支出。';
+          const action = document.createElement('button');
+          action.type = 'button';
+          action.className = 'empty-action';
+          action.dataset.addEntry = '1';
+          action.textContent = '记一笔';
+          empty.append(text, action);
+          dom.categoryBreakdown.append(empty);
+          return;
+        }
+
+        const list = document.createElement('div');
+        list.className = 'category-list';
+        rows.forEach((row, index) => {
+          const item = document.createElement('div');
+          item.className = 'category-row';
+          const head = document.createElement('div');
+          head.className = 'category-row-head';
+          const name = document.createElement('span');
+          name.className = 'category-name';
+          name.textContent = row.name;
+          const figures = document.createElement('span');
+          figures.className = 'category-figures';
+          const amount = document.createElement('b');
+          amount.textContent = formatYuan(row.amountCents);
+          const percent = document.createElement('span');
+          percent.textContent = ` · ${formatPercent(row.amountCents, totalCents)}`;
+          figures.append(amount, percent);
+          head.append(name, figures);
+
+          const track = document.createElement('div');
+          track.className = 'category-track';
+          const fill = document.createElement('span');
+          fill.className = 'category-fill';
+          fill.style.width = `${(row.share * 100).toFixed(2)}%`;
+          fill.style.opacity = String(Math.max(0.45, 0.92 - index * 0.075));
+          track.append(fill);
+          item.append(head, track);
+          list.append(item);
+        });
+        dom.categoryBreakdown.append(list);
+      }
+
+      /* ============================================================
+       * 浮层、焦点与通用反馈
+       * ============================================================ */
+      function motionDelay(milliseconds) {
+        return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 0
+          : milliseconds;
+      }
+
+      function setInert(element, value) {
+        if (!element) return;
+        if (value) element.setAttribute('inert', '');
+        else element.removeAttribute('inert');
+        try {
+          element.inert = Boolean(value);
+        } catch (error) {
+          // 不支持 inert 的浏览器仍有焦点陷阱兜底。
+        }
+      }
+
+      function syncLayerState() {
+        const visibleSubpage = Array.from(document.querySelectorAll('.subpage')).find((element) => !element.hidden);
+        const recordOpen = !dom.recordLayer.hidden;
+        const confirmOpen = !dom.confirmLayer.hidden;
+        const anyOpen = Boolean(visibleSubpage || recordOpen || confirmOpen);
+        setInert(dom.appRoot, anyOpen);
+        setInert(dom.skipLink, anyOpen);
+        setInert(visibleSubpage, recordOpen || confirmOpen);
+        setInert(dom.recordLayer, confirmOpen);
+        setInert(dom.confirmLayer, false);
+        document.body.classList.toggle('modal-open', anyOpen);
+      }
+
+      function focusElement(element) {
+        if (!element || typeof element.focus !== 'function') return;
+        window.requestAnimationFrame(() => {
+          if (!document.contains(element) || element.disabled) return;
+          if (element.closest('[hidden]')) return;
+          try {
+            element.focus({ preventScroll: true });
+          } catch (error) {
+            try { element.focus(); } catch (focusError) { /* noop */ }
+          }
+        });
+      }
+
+      function getTopLayerDialog() {
+        if (!dom.confirmLayer.hidden) return dom.confirmDialog;
+        if (!dom.recordLayer.hidden) return dom.recordDialog;
+        const visibleSubpage = Array.from(document.querySelectorAll('.subpage-panel')).find((panel) => !panel.closest('.subpage').hidden);
+        return visibleSubpage || null;
+      }
+
+      function getFocusableElements(container) {
+        const selector = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        return Array.from(container.querySelectorAll(selector)).filter((element) => {
+          if (element.closest('[inert]')) return false;
+          return Boolean(element.getClientRects().length);
+        });
+      }
+
+      function showToast(message, duration = 2500) {
+        window.clearTimeout(toastTimer);
+        dom.toast.textContent = message;
+        dom.toast.classList.remove('is-visible');
+        void dom.toast.offsetWidth;
+        dom.toast.classList.add('is-visible');
+        toastTimer = window.setTimeout(() => {
+          dom.toast.classList.remove('is-visible');
+        }, duration);
+      }
+
+      function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1600);
+      }
+
+      /* ============================================================
+       * 二级页面
+       * ============================================================ */
+      function openSubpage(kind, trigger) {
+        if (activeSubpage || !dom.recordLayer.hidden || !dom.confirmLayer.hidden) return;
+        if (kind === 'summaries' && !state.settings.noonSummaryEnabled) return;
+        const config = SUBPAGES[kind];
+        if (!config) return;
+
+        activeSubpage = kind;
+        lastFocusedBeforeSubpage = trigger || document.activeElement;
+        if (kind === 'records') prepareRecordsView();
+        else if (kind === 'summaries') prepareSummariesView();
+        else if (kind === 'settings') prepareSettingsView();
+
+        if (subpageCloseTimer) {
+          window.clearTimeout(subpageCloseTimer);
+          subpageCloseTimer = null;
+        }
+        config.element.classList.remove('is-open');
+        config.element.hidden = false;
+        config.scroll.scrollTop = 0;
+        syncLayerState();
+        window.requestAnimationFrame(() => {
+          config.element.classList.add('is-open');
+          config.back.focus({ preventScroll: true });
+        });
+      }
+
+      function closeSubpage(options = {}) {
+        if (!activeSubpage || !dom.recordLayer.hidden || !dom.confirmLayer.hidden) return;
+        const kind = activeSubpage;
+        const config = SUBPAGES[kind];
+        config.element.classList.remove('is-open');
+        const delay = motionDelay(245);
+        subpageCloseTimer = window.setTimeout(() => {
+          config.element.hidden = true;
+          activeSubpage = null;
+          subpageCloseTimer = null;
+          if (kind === 'settings') {
+            categoryEditingId = null;
+            clearCategoryError();
+          }
+          syncLayerState();
+          if (options.restoreFocus !== false) {
+            focusElement(lastFocusedBeforeSubpage && document.contains(lastFocusedBeforeSubpage)
+              ? lastFocusedBeforeSubpage
+              : dom.settingsButton);
+          }
+          if (typeof options.afterClose === 'function') options.afterClose();
+        }, delay);
+      }
+
+      function prepareRecordsView() {
+        filterState = { keyword: '', categoryId: 'all', from: '', to: '' };
+        dom.filterSearch.value = '';
+        dom.filterFrom.value = '';
+        dom.filterTo.value = '';
+        dom.filterError.hidden = true;
+        dom.filterError.textContent = '';
+        populateFilterCategoryOptions();
+        dom.filterCategory.value = 'all';
+        dom.resetFiltersButton.hidden = true;
+        renderAllRecordsList();
+      }
+
+      function populateFilterCategoryOptions() {
+        dom.filterCategory.textContent = '';
+        const allOption = document.createElement('option');
+        allOption.value = 'all';
+        allOption.textContent = '全部分类';
+        dom.filterCategory.append(allOption);
+        for (const category of state.settings.categories) {
+          const option = document.createElement('option');
+          option.value = category.id;
+          option.textContent = category.name;
+          dom.filterCategory.append(option);
+        }
+      }
+
+      function filtersAreActive() {
+        return Boolean(
+          filterState.keyword.trim() ||
+          filterState.categoryId !== 'all' ||
+          filterState.from ||
+          filterState.to
+        );
+      }
+
+      function updateFilterControls() {
+        dom.resetFiltersButton.hidden = !filtersAreActive();
+      }
+
+      function resetFilters() {
+        filterState = { keyword: '', categoryId: 'all', from: '', to: '' };
+        dom.filterSearch.value = '';
+        dom.filterFrom.value = '';
+        dom.filterTo.value = '';
+        dom.filterCategory.value = 'all';
+        dom.filterError.hidden = true;
+        dom.filterError.textContent = '';
+        updateFilterControls();
+        renderAllRecordsList();
+      }
+
+      function createDetailRecordRow(record, todayKey) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'record-row';
+        button.dataset.recordId = record.id;
+        button.setAttribute('aria-label', makeRecordAriaLabel(record, todayKey, true));
+
+        const main = document.createElement('span');
+        main.className = 'record-main';
+        const topLine = document.createElement('span');
+        topLine.className = 'record-topline';
+        const category = document.createElement('span');
+        category.className = 'record-category';
+        category.textContent = categoryNameFor(state, record.categoryId);
+        const clock = document.createElement('span');
+        clock.className = 'record-clock';
+        clock.textContent = clockFromRecord(record);
+        topLine.append(category, clock);
+        main.append(topLine);
+        if (record.note) {
+          const note = document.createElement('span');
+          note.className = 'record-note';
+          note.textContent = record.note;
+          main.append(note);
+        }
+        const amount = document.createElement('span');
+        amount.className = `record-amount ${record.type}`;
+        amount.textContent = formatSignedMoney(record);
+        button.append(main, amount);
+        return button;
+      }
+
+      function renderAllRecordsList() {
+        const todayKey = nowDateKey();
+        const keyword = filterState.keyword.trim().toLocaleLowerCase('zh-CN');
+        const categoryFilter = filterState.categoryId;
+        const hasDateRangeError = Boolean(filterState.from && filterState.to && filterState.from > filterState.to);
+        dom.filterError.hidden = !hasDateRangeError;
+        dom.filterError.textContent = hasDateRangeError ? '起始日期不能晚于结束日期。' : '';
+        updateFilterControls();
+
+        const allRecords = sortedRecordsDescending();
+        let filtered = allRecords.filter((record) => {
+          if (categoryFilter !== 'all' && record.categoryId !== categoryFilter) return false;
+          const categoryName = categoryNameFor(state, record.categoryId);
+          if (keyword) {
+            const haystack = `${categoryName}\n${record.note}`.toLocaleLowerCase('zh-CN');
+            if (!haystack.includes(keyword)) return false;
+          }
+          const date = dateKeyFromRecord(record);
+          if (filterState.from && date < filterState.from) return false;
+          if (filterState.to && date > filterState.to) return false;
+          return true;
+        });
+        if (hasDateRangeError) filtered = [];
+
+        dom.recordsResultCount.textContent = `共 ${filtered.length} 笔`;
+        dom.allRecordsList.textContent = '';
+
+        if (allRecords.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'records-empty';
+          const text = document.createElement('p');
+          text.textContent = '还没有账目。';
+          const action = document.createElement('button');
+          action.type = 'button';
+          action.className = 'empty-action';
+          action.dataset.addEntry = '1';
+          action.textContent = '记第一笔';
+          empty.append(text, action);
+          dom.allRecordsList.append(empty);
+          return;
+        }
+
+        if (filtered.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'records-empty';
+          const text = document.createElement('p');
+          text.textContent = hasDateRangeError ? '请调整日期范围。' : '没有符合条件的明细。';
+          const action = document.createElement('button');
+          action.type = 'button';
+          action.className = 'empty-action';
+          action.textContent = hasDateRangeError ? '重置筛选' : '清除筛选';
+          action.addEventListener('click', resetFilters);
+          empty.append(text, action);
+          dom.allRecordsList.append(empty);
+          return;
+        }
+
+        const groups = new Map();
+        for (const record of filtered) {
+          const date = dateKeyFromRecord(record);
+          if (!groups.has(date)) groups.set(date, []);
+          groups.get(date).push(record);
+        }
+
+        for (const [date, records] of groups) {
+          const group = document.createElement('section');
+          group.className = 'records-group';
+          const heading = document.createElement('div');
+          heading.className = 'records-date';
+          const label = document.createElement('span');
+          label.textContent = formatGroupDate(date, todayKey);
+          const count = document.createElement('span');
+          count.textContent = `${records.length} 笔`;
+          heading.append(label, count);
+          group.append(heading);
+          for (const record of records) {
+            group.append(createDetailRecordRow(record, todayKey));
+          }
+          dom.allRecordsList.append(group);
+        }
+      }
+
+      function prepareSummariesView() {
+        if (!state.settings.noonSummaryEnabled) return;
+        // 打开汇总页时再次尝试补算，处理页面长时间停留、休眠或系统时钟跨越 12:00 的情况。
+        if (syncSummariesAndPersist({ silent: true })) {
+          renderHome();
+        }
+        expandedSummaryDate = null;
+        renderSummaryList();
+      }
+
+      function createCaretSvg() {
+        const span = document.createElement('span');
+        span.innerHTML = '<svg class="summary-caret" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7.5l5 5 5-5"></path></svg>';
+        return span.firstElementChild;
+      }
+
+      function renderSummaryList() {
+        const todayKey = nowDateKey();
+        const summaries = state.summaries.slice().sort((a, b) => b.date.localeCompare(a.date));
+        dom.summaryList.textContent = '';
+
+        if (!summaries.length) {
+          const empty = document.createElement('div');
+          empty.className = 'summary-empty';
+          const text = document.createElement('p');
+          text.textContent = '还没有 12:00 汇总。';
+          const action = document.createElement('button');
+          action.type = 'button';
+          action.className = 'empty-action';
+          action.dataset.addEntry = '1';
+          action.textContent = '记一笔';
+          empty.append(text, action);
+          dom.summaryList.append(empty);
+          return;
+        }
+
+        summaries.forEach((summary, index) => {
+          const item = document.createElement('article');
+          item.className = 'summary-item';
+          const toggle = document.createElement('button');
+          toggle.type = 'button';
+          toggle.className = 'summary-toggle';
+          toggle.dataset.summaryDate = summary.date;
+          toggle.setAttribute('aria-expanded', String(expandedSummaryDate === summary.date));
+          toggle.setAttribute('aria-controls', `summary-details-${index}`);
+          toggle.setAttribute('aria-label', `${formatGroupDate(summary.date, todayKey)}，12点汇总，${formatYuan(summary.amountCents)}，${summary.count} 笔${expandedSummaryDate === summary.date ? '，收起明细' : '，展开查看当天明细'}`);
+
+          const main = document.createElement('div');
+          main.className = 'summary-main';
+          const date = document.createElement('div');
+          date.className = 'summary-date';
+          date.textContent = formatGroupDate(summary.date, todayKey);
+          const sub = document.createElement('div');
+          sub.className = 'summary-sub';
+          sub.textContent = `12:00 · ${summary.topCategoryId ? `最大分类 ${categoryNameFor(state, summary.topCategoryId)}` : '暂无支出'}`;
+          main.append(date, sub);
+
+          const figure = document.createElement('div');
+          figure.className = 'summary-figure';
+          const amount = document.createElement('div');
+          amount.className = 'summary-amount';
+          amount.textContent = formatYuan(summary.amountCents);
+          const count = document.createElement('div');
+          count.className = 'summary-count';
+          count.textContent = `${summary.count} 笔`;
+          figure.append(amount, count);
+
+          toggle.append(main, figure, createCaretSvg());
+          item.append(toggle);
+
+          if (expandedSummaryDate === summary.date) {
+            const details = document.createElement('div');
+            details.className = 'summary-details';
+            details.id = `summary-details-${index}`;
+            const dayRecords = recordsForDate(summary.date);
+            if (!dayRecords.length) {
+              const empty = document.createElement('p');
+              empty.className = 'summary-days-empty';
+              empty.textContent = '当天没有明细。';
+              details.append(empty);
+            } else {
+              for (const record of dayRecords) {
+                const row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'summary-record';
+                row.dataset.recordId = record.id;
+                row.setAttribute('aria-label', makeRecordAriaLabel(record, todayKey, true));
+                const main2 = document.createElement('span');
+                main2.className = 'summary-record-main';
+                const title = document.createElement('span');
+                title.className = 'summary-record-title';
+                title.textContent = `${categoryNameFor(state, record.categoryId)} · ${clockFromRecord(record)}`;
+                main2.append(title);
+                if (record.note) {
+                  const note = document.createElement('span');
+                  note.className = 'summary-record-note';
+                  note.textContent = record.note;
+                  main2.append(document.createElement('br'), note);
+                }
+                const recordAmount = document.createElement('span');
+                recordAmount.className = `summary-record-amount ${record.type}`;
+                recordAmount.textContent = formatSignedMoney(record);
+                row.append(main2, recordAmount);
+                details.append(row);
+              }
+            }
+            item.append(details);
+          }
+          dom.summaryList.append(item);
+        });
+      }
+
+      /* ============================================================
+       * 设置页基础渲染
+       * ============================================================ */
+      function prepareSettingsView() {
+        categoryEditingId = null;
+        fillFundsInputs();
+        dom.fundsError.hidden = true;
+        dom.fundsError.textContent = '';
+        clearCategoryError();
+        dom.newCategoryInput.value = '';
+        dom.categoryError.hidden = true;
+        dom.dataStatus.hidden = true;
+        dom.dataStatus.textContent = '';
+        dom.dataStatus.removeAttribute('data-tone');
+        dom.noonSwitch.setAttribute('aria-checked', String(state.settings.noonSummaryEnabled));
+        dom.saveFundsButton.disabled = false;
+        dom.saveFundsButton.textContent = '保存资金设置';
+        updateSettingsDataSummary();
+        renderCategorySettings();
+        dom.settingsContent.scrollTop = 0;
+      }
+
+      function fillFundsInputs() {
+        dom.initialBalanceInput.value = formatInputMoney(state.settings.initialBalanceCents, true);
+        dom.budgetInput.value = state.settings.monthlyBudgetCents === null
+          ? ''
+          : formatInputMoney(state.settings.monthlyBudgetCents, false);
+        dom.initialBalanceInput.removeAttribute('aria-invalid');
+        dom.budgetInput.removeAttribute('aria-invalid');
+      }
+
+      function updateSettingsDataSummary() {
+        dom.dataSummary.textContent = `${state.records.length} 笔 · ${state.summaries.length} 天汇总`;
+        dom.clearDataButton.disabled = state.records.length === 0 && state.summaries.length === 0;
+        dom.categoryCount.textContent = `${state.settings.categories.length} 个`;
+      }
+
+      function showFundsError(message, field) {
+        dom.fundsError.textContent = message;
+        dom.fundsError.hidden = false;
+        if (field === 'initial') {
+          dom.initialBalanceInput.setAttribute('aria-invalid', 'true');
+          dom.initialBalanceInput.focus();
+        } else if (field === 'budget') {
+          dom.budgetInput.setAttribute('aria-invalid', 'true');
+          dom.budgetInput.focus();
+        }
+      }
+
+      function clearFundsError() {
+        dom.fundsError.hidden = true;
+        dom.fundsError.textContent = '';
+        dom.initialBalanceInput.removeAttribute('aria-invalid');
+        dom.budgetInput.removeAttribute('aria-invalid');
+      }
+
+      function showCategoryError(message) {
+        dom.categoryError.textContent = message;
+        dom.categoryError.hidden = false;
+      }
+
+      function clearCategoryError() {
+        dom.categoryError.hidden = true;
+        dom.categoryError.textContent = '';
+      }
+
+      function categoryPencilIcon() {
+        return '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14.6V16h1.4L15 6.4 13.6 5 4 14.6z"></path><path d="M12.5 6.1l1.4 1.4"></path></svg>';
+      }
+
+      function categoryTrashIcon() {
+        return '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h12"></path><path d="M7.5 6V4.5h5V6"></path><path d="M6 6l.7 10h6.6L14 6"></path></svg>';
+      }
+
+      function renderCategorySettings() {
+        dom.categoryList.textContent = '';
+        for (const category of state.settings.categories) {
+          if (categoryEditingId === category.id) {
+            const form = document.createElement('form');
+            form.className = 'category-edit-row';
+            form.dataset.categoryId = category.id;
+            const input = document.createElement('input');
+            input.className = 'category-edit-input';
+            input.type = 'text';
+            input.maxLength = CATEGORY_NAME_MAX_LENGTH;
+            input.value = category.name;
+            input.setAttribute('aria-label', '编辑分类名称');
+            input.autocomplete = 'off';
+            const save = document.createElement('button');
+            save.type = 'submit';
+            save.className = 'small-primary';
+            save.textContent = '保存';
+            const cancel = document.createElement('button');
+            cancel.type = 'button';
+            cancel.className = 'small-secondary';
+            cancel.dataset.categoryCancel = '1';
+            cancel.textContent = '取消';
+            form.append(input, save, cancel);
+            dom.categoryList.append(form);
+            continue;
+          }
+
+          const row = document.createElement('div');
+          row.className = 'category-setting-row';
+          row.dataset.categoryId = category.id;
+          const name = document.createElement('span');
+          name.className = 'category-setting-name';
+          name.textContent = category.name;
+          const actions = document.createElement('div');
+          actions.className = 'category-actions';
+          if (category.id === OTHER_CATEGORY_ID) {
+            const fixed = document.createElement('span');
+            fixed.className = 'category-fixed';
+            fixed.textContent = '保留';
+            actions.append(fixed);
+          } else {
+            const edit = document.createElement('button');
+            edit.type = 'button';
+            edit.className = 'mini-icon-button';
+            edit.dataset.categoryAction = 'edit';
+            edit.setAttribute('aria-label', `编辑分类 ${category.name}`);
+            edit.innerHTML = categoryPencilIcon();
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'mini-icon-button is-danger';
+            remove.dataset.categoryAction = 'delete';
+            remove.setAttribute('aria-label', `删除分类 ${category.name}`);
+            remove.innerHTML = categoryTrashIcon();
+            actions.append(edit, remove);
+          }
+          row.append(name, actions);
+          dom.categoryList.append(row);
+        }
+        dom.categoryCount.textContent = `${state.settings.categories.length} 个`;
+      }
+
+      /* ============================================================
+       * 通用二次确认
+       * ============================================================ */
+      function updateConfirmAcceptAvailability() {
+        if (!confirmConfig) return;
+        if (confirmConfig.requirePhrase) {
+          dom.confirmAcceptButton.disabled = dom.confirmInput.value.trim() !== confirmConfig.requirePhrase;
+        }
+      }
+
+      function openConfirm(config) {
+        if (!dom.confirmLayer.hidden || !config) return;
+        if (confirmCloseTimer) {
+          window.clearTimeout(confirmCloseTimer);
+          confirmCloseTimer = null;
+        }
+        confirmConfig = config;
+        confirmBusy = false;
+        lastFocusedBeforeConfirm = document.activeElement;
+        confirmReturnFocus = config.returnFocus || lastFocusedBeforeConfirm;
+        dom.confirmTitle.textContent = config.title || '确认操作';
+        dom.confirmMessage.textContent = config.message || '';
+        dom.confirmError.hidden = true;
+        dom.confirmError.textContent = '';
+        dom.confirmAcceptButton.textContent = config.acceptLabel || '确认';
+        dom.confirmAcceptButton.classList.toggle('is-danger', config.tone === 'danger');
+        dom.confirmCancelButton.disabled = false;
+        dom.confirmAcceptButton.disabled = false;
+        dom.confirmInput.value = '';
+        dom.confirmInput.removeAttribute('aria-invalid');
+
+        if (config.requirePhrase) {
+          dom.confirmInputWrap.hidden = false;
+          dom.confirmInputLabel.textContent = `请输入“${config.requirePhrase}”以确认`;
+          dom.confirmInput.placeholder = config.requirePhrase;
+          dom.confirmAcceptButton.disabled = true;
+        } else {
+          dom.confirmInputWrap.hidden = true;
+          dom.confirmInputLabel.textContent = '请输入确认文字';
+          dom.confirmInput.placeholder = '';
+        }
+
+        dom.confirmLayer.classList.remove('is-open');
+        dom.confirmLayer.hidden = false;
+        syncLayerState();
+        window.requestAnimationFrame(() => {
+          dom.confirmLayer.classList.add('is-open');
+          if (config.requirePhrase) dom.confirmInput.focus({ preventScroll: true });
+          else dom.confirmCancelButton.focus({ preventScroll: true });
+        });
+      }
+
+      function closeConfirm(options = {}) {
+        if (dom.confirmLayer.hidden || confirmBusy) return;
+        if (confirmCloseTimer) window.clearTimeout(confirmCloseTimer);
+        dom.confirmLayer.classList.remove('is-open');
+        const delay = motionDelay(190);
+        confirmCloseTimer = window.setTimeout(() => {
+          dom.confirmLayer.hidden = true;
+          confirmCloseTimer = null;
+          confirmConfig = null;
+          syncLayerState();
+          if (options.restoreFocus !== false) {
+            focusElement(confirmReturnFocus && document.contains(confirmReturnFocus)
+              ? confirmReturnFocus
+              : dom.addRecordButton);
+          }
+          if (typeof options.afterClose === 'function') options.afterClose();
+        }, delay);
+      }
+
+      function acceptConfirm() {
+        if (!confirmConfig || confirmBusy) return;
+        if (confirmConfig.requirePhrase && dom.confirmInput.value.trim() !== confirmConfig.requirePhrase) return;
+        confirmBusy = true;
+        dom.confirmAcceptButton.disabled = true;
+        dom.confirmCancelButton.disabled = true;
+        dom.confirmError.hidden = true;
+        dom.confirmError.textContent = '';
+
+        let result;
+        try {
+          result = confirmConfig.onConfirm ? confirmConfig.onConfirm() : { ok: true };
+        } catch (error) {
+          result = { ok: false, message: '操作失败，请重试。' };
+        }
+
+        confirmBusy = false;
+        if (!result || result.ok === false) {
+          dom.confirmCancelButton.disabled = false;
+          dom.confirmAcceptButton.disabled = false;
+          updateConfirmAcceptAvailability();
+          dom.confirmError.textContent = (result && result.message) || '操作失败，请重试。';
+          dom.confirmError.hidden = false;
+          return;
+        }
+
+        const success = typeof confirmConfig.onSuccess === 'function' ? confirmConfig.onSuccess : null;
+        dom.confirmCancelButton.disabled = false;
+        dom.confirmAcceptButton.disabled = false;
+        closeConfirm({
+          restoreFocus: false,
+          afterClose: success
+        });
+      }
+
+      /* ============================================================
+       * 记一笔 / 编辑
+       * ============================================================ */
+      function clearAmountError() {
+        dom.amountError.hidden = true;
+        dom.amountError.textContent = '';
+        dom.amountEntry.classList.remove('has-error');
+        dom.amountInput.removeAttribute('aria-invalid');
+      }
+
+      function showAmountError(message) {
+        dom.amountError.textContent = message;
+        dom.amountError.hidden = false;
+        dom.amountEntry.classList.add('has-error');
+        dom.amountInput.setAttribute('aria-invalid', 'true');
+        dom.amountInput.focus();
+      }
+
+      function clearTimeError() {
+        dom.timeError.hidden = true;
+        dom.timeError.textContent = '';
+        dom.dateInput.removeAttribute('aria-invalid');
+        dom.timeInput.removeAttribute('aria-invalid');
+      }
+
+      function showTimeError(message, field) {
+        dom.timeError.textContent = message;
+        dom.timeError.hidden = false;
+        dom.dateInput.setAttribute('aria-invalid', 'true');
+        dom.timeInput.setAttribute('aria-invalid', 'true');
+        (field === 'date' ? dom.dateInput : dom.timeInput).focus();
+      }
+
+      function clearEntryCategoryError() {
+        dom.entryCategoryError.hidden = true;
+        dom.entryCategoryError.textContent = '';
+        dom.categoryPicker.removeAttribute('aria-invalid');
+      }
+
+      function showEntryCategoryError(message) {
+        dom.entryCategoryError.textContent = message;
+        dom.entryCategoryError.hidden = false;
+        dom.categoryPicker.setAttribute('aria-invalid', 'true');
+        const selected = dom.categoryPicker.querySelector('[aria-pressed="true"]');
+        if (selected) selected.focus();
+      }
+
+      function clearRecordErrors() {
+        clearAmountError();
+        clearTimeError();
+        clearEntryCategoryError();
+        dom.formError.hidden = true;
+        dom.formError.textContent = '';
+        dom.noteInput.removeAttribute('aria-invalid');
+      }
+
+      function showFormError(message) {
+        dom.formError.textContent = message;
+        dom.formError.hidden = false;
+      }
+
+      function updateEntryTypeUI() {
+        dom.recordForm.dataset.type = selectedEntryType;
+        dom.recordForm.querySelectorAll('[data-entry-type]').forEach((button) => {
+          button.setAttribute('aria-pressed', String(button.dataset.entryType === selectedEntryType));
+        });
+      }
+
+      function defaultCategoryForType(type) {
+        const latest = sortedRecordsDescending().find((record) =>
+          record.type === type && state.settings.categories.some((category) => category.id === record.categoryId)
+        );
+        if (latest) return latest.categoryId;
+        if (type === 'income' && state.settings.categories.some((category) => category.id === OTHER_CATEGORY_ID)) {
+          return OTHER_CATEGORY_ID;
+        }
+        return state.settings.categories[0]?.id || OTHER_CATEGORY_ID;
+      }
+
+      function renderCategoryPicker() {
+        dom.categoryPicker.textContent = '';
+        if (!state.settings.categories.some((category) => category.id === selectedCategoryId)) {
+          selectedCategoryId = defaultCategoryForType(selectedEntryType);
+        }
+        state.settings.categories.forEach((category) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'category-chip';
+          button.dataset.categoryId = category.id;
+          button.setAttribute('aria-pressed', String(category.id === selectedCategoryId));
+          button.textContent = category.name;
+          dom.categoryPicker.append(button);
+        });
+      }
+
+      function scrollSelectedCategoryIntoView() {
+        const selected = dom.categoryPicker.querySelector('[aria-pressed="true"]');
+        if (!selected) return;
+        const left = selected.offsetLeft;
+        const right = left + selected.offsetWidth;
+        const visibleLeft = dom.categoryPicker.scrollLeft;
+        const visibleRight = visibleLeft + dom.categoryPicker.clientWidth;
+        if (left < visibleLeft) dom.categoryPicker.scrollLeft = Math.max(0, left - 6);
+        else if (right > visibleRight) dom.categoryPicker.scrollLeft = right - dom.categoryPicker.clientWidth + 6;
+      }
+
+      function openRecordSheet(mode, recordId, trigger) {
+        if (!dom.recordLayer.hidden || !dom.confirmLayer.hidden) return;
+        const record = mode === 'edit' ? state.records.find((item) => item.id === recordId) : null;
+        if (mode === 'edit' && !record) {
+          showToast('这笔账目已不存在');
+          return;
+        }
+        recordMode = mode;
+        editingRecordId = record ? record.id : null;
+        recordCommitted = false;
+        isSavingRecord = false;
+        lastFocusedBeforeRecord = trigger || document.activeElement;
+        selectedEntryType = record ? record.type : 'expense';
+        selectedCategoryId = record
+          ? record.categoryId
+          : defaultCategoryForType(selectedEntryType);
+
+        const now = beijingParts();
+        const todayKey = now.dateKey;
+        dom.recordTitle.textContent = mode === 'edit' ? '编辑这笔' : '记一笔';
+        dom.saveRecordButton.textContent = mode === 'edit' ? '保存修改' : '保存';
+        dom.saveRecordButton.disabled = false;
+        dom.deleteRecordButton.hidden = mode !== 'edit';
+        dom.deleteRecordButton.disabled = false;
+        dom.amountInput.value = record ? formatInputMoney(record.amountCents, false) : '';
+        dom.noteInput.value = record ? record.note : '';
+        dom.dateInput.min = '1900-01-01';
+        dom.dateInput.max = todayKey;
+        dom.dateInput.value = record ? record.at.slice(0, 10) : now.dateKey;
+        dom.timeInput.value = record ? record.at.slice(11, 16) : `${pad2(now.hour)}:${pad2(now.minute)}`;
+        dom.timeHint.textContent = '按北京时间记录';
+        clearRecordErrors();
+        updateEntryTypeUI();
+        renderCategoryPicker();
+        dom.recordDialog.scrollTop = 0;
+        if (recordCloseTimer) {
+          window.clearTimeout(recordCloseTimer);
+          recordCloseTimer = null;
+        }
+        dom.recordLayer.classList.remove('is-open');
+        dom.recordLayer.hidden = false;
+        syncLayerState();
+        window.requestAnimationFrame(() => {
+          dom.recordLayer.classList.add('is-open');
+          dom.amountInput.focus({ preventScroll: true });
+          scrollSelectedCategoryIntoView();
+          if (mode === 'edit') {
+            try { dom.amountInput.select(); } catch (error) { /* noop */ }
+          }
+        });
+      }
+
+      function closeRecordSheet(options = {}) {
+        if (dom.recordLayer.hidden || isSavingRecord) return;
+        if (recordCloseTimer) window.clearTimeout(recordCloseTimer);
+        dom.recordLayer.classList.remove('is-open');
+        const delay = motionDelay(245);
+        recordCloseTimer = window.setTimeout(() => {
+          dom.recordLayer.hidden = true;
+          recordCloseTimer = null;
+          syncLayerState();
+          if (options.restoreFocus !== false) {
+            focusElement(lastFocusedBeforeRecord && document.contains(lastFocusedBeforeRecord)
+              ? lastFocusedBeforeRecord
+              : dom.addRecordButton);
+          }
+          if (typeof options.afterClose === 'function') options.afterClose();
+        }, delay);
+      }
+
+      function focusAfterRecordClosed() {
+        if (activeSubpage === 'records') focusElement(dom.recordsBackButton);
+        else if (activeSubpage === 'summaries') focusElement(dom.summariesBackButton);
+        else focusElement(dom.addRecordButton);
+      }
+
+      function validateRecordForm() {
+        const amountResult = parseMoneyCents(dom.amountInput.value, { fieldLabel: '金额' });
+        if (!amountResult.ok) {
+          showAmountError(amountResult.error);
+          return { ok: false };
+        }
+        if (!state.settings.categories.some((category) => category.id === selectedCategoryId)) {
+          showEntryCategoryError('请选择分类。');
+          return { ok: false };
+        }
+        const timeResult = parseRecordDateTime(dom.dateInput.value, dom.timeInput.value);
+        if (!timeResult.ok) {
+          showTimeError(timeResult.error, timeResult.field);
+          return { ok: false };
+        }
+        const note = dom.noteInput.value.trim();
+        if (note.length > NOTE_MAX_LENGTH) {
+          showFormError(`备注最多 ${NOTE_MAX_LENGTH} 字。`);
+          dom.noteInput.focus();
+          return { ok: false };
+        }
+        return {
+          ok: true,
+          value: {
+            type: selectedEntryType,
+            amountCents: amountResult.cents,
+            categoryId: selectedCategoryId,
+            note,
+            at: timeResult.at
+          }
+        };
+      }
+
+      function applyDataAndSummaries(nextState) {
+        // 关闭汇总时也不生成新的日期，但仍重算已有日期，避免删改留下错误分类或旧金额。
+        applySummaryReconciliation(nextState, {
+          generateMissing: nextState.settings.noonSummaryEnabled
+        });
+        return nextState;
+      }
+
+      function refreshViewsAfterRecordChange() {
+        renderHome();
+        if (activeSubpage === 'records') renderAllRecordsList();
+        if (activeSubpage === 'summaries') renderSummaryList();
+        if (activeSubpage === 'settings') updateSettingsDataSummary();
+      }
+
+      function commitNewRecord(record) {
+        const next = cloneState(state);
+        next.records.push(record);
+        applyDataAndSummaries(next);
+        if (!commitState(next)) return false;
+        refreshViewsAfterRecordChange();
+        return true;
+      }
+
+      function commitEditedRecord(record) {
+        const next = cloneState(state);
+        next.records = next.records.map((item) => item.id === record.id ? record : item);
+        applyDataAndSummaries(next);
+        if (!commitState(next)) return false;
+        refreshViewsAfterRecordChange();
+        return true;
+      }
+
+      function submitRecord(event) {
+        if (event) event.preventDefault();
+        if (isSavingRecord || recordCommitted) return;
+        clearRecordErrors();
+        const validated = validateRecordForm();
+        if (!validated.ok) return;
+
+        if (recordMode === 'edit') {
+          const existing = state.records.find((record) => record.id === editingRecordId);
+          if (!existing) {
+            showFormError('这笔账目已不存在。');
+            return;
+          }
+          const updated = {
+            id: existing.id,
+            type: validated.value.type,
+            amountCents: validated.value.amountCents,
+            categoryId: validated.value.categoryId,
+            note: validated.value.note,
+            at: validated.value.at,
+            createdAt: existing.createdAt
+          };
+          const categoryName = categoryNameFor(state, updated.categoryId);
+          openConfirm({
+            title: '保存修改？',
+            message: `${updated.type === 'expense' ? '支出' : '收入'} · ${categoryName} · ${formatSignedMoney(updated)}。保存后余额与当天 12:00 汇总会重新计算。`,
+            acceptLabel: '保存修改',
+            tone: 'primary',
+            returnFocus: dom.saveRecordButton,
+            onConfirm: () => {
+              if (!commitEditedRecord(updated)) {
+                return { ok: false, message: '保存失败：本机存储不可用或已满，修改没有保存。' };
+              }
+              recordCommitted = true;
+              return { ok: true };
+            },
+            onSuccess: () => {
+              closeRecordSheet({
+                restoreFocus: false,
+                afterClose: () => {
+                  showToast('修改已保存');
+                  focusAfterRecordClosed();
+                }
+              });
+            }
+          });
+          return;
+        }
+
+        const record = {
+          id: makeRecordId(),
+          type: validated.value.type,
+          amountCents: validated.value.amountCents,
+          categoryId: validated.value.categoryId,
+          note: validated.value.note,
+          at: validated.value.at,
+          createdAt: Date.now()
+        };
+        isSavingRecord = true;
+        dom.saveRecordButton.disabled = true;
+        dom.saveRecordButton.textContent = '保存中…';
+        try {
+          if (!commitNewRecord(record)) throw new Error('write failed');
+          recordCommitted = true;
+          isSavingRecord = false;
+          closeRecordSheet({
+            restoreFocus: false,
+            afterClose: () => {
+              showToast(`已记一笔 · ${formatSignedMoney(record)}`);
+              focusAfterRecordClosed();
+            }
+          });
+        } catch (error) {
+          isSavingRecord = false;
+          dom.saveRecordButton.disabled = false;
+          dom.saveRecordButton.textContent = '保存';
+          showFormError('保存失败：本机存储不可用或已满，这笔账目没有保存。');
+        }
+      }
+
+      function requestDeleteRecord() {
+        if (recordMode !== 'edit' || !editingRecordId) return;
+        const record = state.records.find((item) => item.id === editingRecordId);
+        if (!record) return;
+        openConfirm({
+          title: '删除这笔账目？',
+          message: `${record.type === 'expense' ? '支出' : '收入'} · ${categoryNameFor(state, record.categoryId)} · ${formatSignedMoney(record)}。删除后余额、图表与 12:00 汇总都会重新计算，且无法撤销。`,
+          acceptLabel: '删除',
+          tone: 'danger',
+          returnFocus: dom.deleteRecordButton,
+          onConfirm: () => {
+            const next = cloneState(state);
+            next.records = next.records.filter((item) => item.id !== record.id);
+            applyDataAndSummaries(next);
+            if (!commitState(next)) {
+              return { ok: false, message: '删除失败：本机存储不可用，账目没有改变。' };
+            }
+            refreshViewsAfterRecordChange();
+            return { ok: true };
+          },
+          onSuccess: () => {
+            closeRecordSheet({
+              restoreFocus: false,
+              afterClose: () => {
+                showToast('已删除这笔账目');
+                focusAfterRecordClosed();
+              }
+            });
+          }
+        });
+      }
+
+      /* ============================================================
+       * 设置：资金、分类与汇总开关
+       * ============================================================ */
+      function saveFundsSettings() {
+        if (isSavingSettings) return;
+        clearFundsError();
+        const initialRaw = dom.initialBalanceInput.value.trim();
+        const initialResult = initialRaw
+          ? parseMoneyCents(initialRaw, { allowNegative: true, allowZero: true, fieldLabel: '初始余额' })
+          : { ok: true, cents: 0 };
+        if (!initialResult.ok) {
+          showFundsError(initialResult.error, 'initial');
+          return;
+        }
+        const budgetRaw = dom.budgetInput.value.trim();
+        let budgetCents = null;
+        if (budgetRaw) {
+          const budgetResult = parseMoneyCents(budgetRaw, { allowNegative: false, allowZero: false, fieldLabel: '月预算' });
+          if (!budgetResult.ok) {
+            showFundsError(budgetResult.error, 'budget');
+            return;
+          }
+          budgetCents = budgetResult.cents;
+        }
+
+        isSavingSettings = true;
+        dom.saveFundsButton.disabled = true;
+        dom.saveFundsButton.textContent = '保存中…';
+        try {
+          const next = cloneState(state);
+          next.settings.initialBalanceCents = initialResult.cents;
+          next.settings.monthlyBudgetCents = budgetCents;
+          if (!commitState(next)) throw new Error('write failed');
+          fillFundsInputs();
+          renderHome();
+          updateSettingsDataSummary();
+          showToast('资金设置已保存');
+        } catch (error) {
+          showFundsError('保存失败：本机存储不可用或已满。');
+        } finally {
+          isSavingSettings = false;
+          dom.saveFundsButton.disabled = false;
+          dom.saveFundsButton.textContent = '保存资金设置';
+        }
+      }
+
+      function beginCategoryEdit(categoryId) {
+        if (categoryId === OTHER_CATEGORY_ID) return;
+        categoryEditingId = categoryId;
+        clearCategoryError();
+        renderCategorySettings();
+        window.requestAnimationFrame(() => {
+          const input = dom.categoryList.querySelector('.category-edit-input');
+          if (input) {
+            input.focus({ preventScroll: true });
+            try { input.select(); } catch (error) { /* noop */ }
+          }
+        });
+      }
+
+      function cancelCategoryEdit() {
+        categoryEditingId = null;
+        clearCategoryError();
+        renderCategorySettings();
+      }
+
+      function saveCategoryName(categoryId, rawName) {
+        const category = state.settings.categories.find((item) => item.id === categoryId);
+        if (!category) return;
+        const validation = validateCategoryName(state, rawName, categoryId);
+        if (!validation.ok) {
+          showCategoryError(validation.error);
+          return;
+        }
+        const next = cloneState(state);
+        next.settings.categories = next.settings.categories.map((item) =>
+          item.id === categoryId ? { ...item, name: validation.name } : item
+        );
+        if (!commitState(next)) {
+          showCategoryError('保存失败：本机存储不可用或已满。');
+          return;
+        }
+        categoryEditingId = null;
+        clearCategoryError();
+        renderCategorySettings();
+        renderHome();
+        if (activeSubpage === 'records') renderAllRecordsList();
+        if (activeSubpage === 'summaries') renderSummaryList();
+        updateSettingsDataSummary();
+        showToast('分类名称已更新');
+      }
+
+      function addCategory(rawName) {
+        const validation = validateCategoryName(state, rawName, null);
+        if (!validation.ok) {
+          showCategoryError(validation.error);
+          dom.newCategoryInput.focus();
+          return;
+        }
+        const newCategory = { id: makeCategoryId(), name: validation.name };
+        const next = cloneState(state);
+        const otherIndex = next.settings.categories.findIndex((category) => category.id === OTHER_CATEGORY_ID);
+        if (otherIndex >= 0) next.settings.categories.splice(otherIndex, 0, newCategory);
+        else next.settings.categories.push(newCategory);
+        if (!commitState(next)) {
+          showCategoryError('添加失败：本机存储不可用或已满。');
+          return;
+        }
+        clearCategoryError();
+        dom.newCategoryInput.value = '';
+        renderCategorySettings();
+        updateSettingsDataSummary();
+        showToast('分类已添加');
+        dom.newCategoryInput.focus();
+      }
+
+      function requestDeleteCategory(category, trigger) {
+        if (!category || category.id === OTHER_CATEGORY_ID) return;
+        const usage = categoryUsageCount(state, category.id);
+        openConfirm({
+          title: `删除分类「${category.name}」？`,
+          message: usage
+            ? `这个分类下有 ${usage} 笔账目。删除后这些账目会归入「其他」，相关合计与 12:00 汇总会重新计算。`
+            : '删除后不可恢复，可重新添加同名分类。',
+          acceptLabel: '删除分类',
+          tone: 'danger',
+          returnFocus: trigger || dom.newCategoryInput,
+          onConfirm: () => {
+            const next = cloneState(state);
+            next.settings.categories = next.settings.categories.filter((item) => item.id !== category.id);
+            next.records = next.records.map((record) =>
+              record.categoryId === category.id ? { ...record, categoryId: OTHER_CATEGORY_ID } : record
+            );
+            applyDataAndSummaries(next);
+            if (!commitState(next)) {
+              return { ok: false, message: '删除失败：本机存储不可用或已满。' };
+            }
+            categoryEditingId = null;
+            if (filterState.categoryId === category.id) filterState.categoryId = 'all';
+            renderCategorySettings();
+            renderHome();
+            renderAllRecordsList();
+            renderSummaryList();
+            updateSettingsDataSummary();
+            return { ok: true };
+          },
+          onSuccess: () => {
+            clearCategoryError();
+            showToast('分类已删除');
+            focusElement(dom.newCategoryInput);
+          }
+        });
+      }
+
+      function toggleNoonSummary() {
+        const next = cloneState(state);
+        const nextValue = !next.settings.noonSummaryEnabled;
+        next.settings.noonSummaryEnabled = nextValue;
+        if (nextValue) {
+          next.summaries = reconcileSummaries(next, { generateMissing: true });
+        }
+        if (!commitState(next)) {
+          showToast('设置保存失败：本机存储不可用');
+          return;
+        }
+        dom.noonSwitch.setAttribute('aria-checked', String(nextValue));
+        updateSettingsDataSummary();
+        renderHome();
+        scheduleTimeBoundaries();
+        showToast(nextValue ? '已开启 12:00 汇总' : '已关闭 12:00 汇总，首页只显示今日实时');
+      }
+
+      /* ============================================================
+       * 导出 / 导入 / 清空
+       * ============================================================ */
+      function setDataStatus(message, tone = '') {
+        if (!message) {
+          dom.dataStatus.hidden = true;
+          dom.dataStatus.textContent = '';
+          dom.dataStatus.removeAttribute('data-tone');
+          return;
+        }
+        dom.dataStatus.textContent = message;
+        dom.dataStatus.hidden = false;
+        if (tone) dom.dataStatus.dataset.tone = tone;
+        else dom.dataStatus.removeAttribute('data-tone');
+      }
+
+      function exportBackup() {
+        const now = formatExportStamp();
+        const payload = {
+          format: BACKUP_FORMAT,
+          version: SCHEMA_VERSION,
+          exportedAt: nowBeijingISO(),
+          data: cloneState(state)
+        };
+        try {
+          const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+          downloadBlob(blob, `one-page-ledger-${now.date}-${now.time}.json`);
+          showToast('JSON 备份已导出');
+        } catch (error) {
+          setDataStatus('导出失败：浏览器未能创建下载文件。', 'error');
+          showToast('导出失败');
+        }
+      }
+
+      function escapeCsvText(value) {
+        let text = String(value == null ? '' : value);
+        if (/^[\s]*[=+\-@\t\r]/.test(text)) text = `'${text}`;
+        if (/[",\r\n]/.test(text)) text = `"${text.replace(/"/g, '""')}"`;
+        return text;
+      }
+
+      function exportCsv() {
+        const sorted = sortedRecordsAscending();
+        const lines = ['日期,类型,分类,金额,备注'];
+        for (const record of sorted) {
+          const date = `${dateKeyFromRecord(record)} ${clockFromRecord(record)}`;
+          const type = record.type === 'expense' ? '支出' : '收入';
+          const category = categoryNameFor(state, record.categoryId);
+          const amount = `${record.type === 'expense' ? '-' : ''}${(record.amountCents / 100).toFixed(2)}`;
+          lines.push([escapeCsvText(date), escapeCsvText(type), escapeCsvText(category), amount, escapeCsvText(record.note)].join(','));
+        }
+        const stamp = formatExportStamp();
+        try {
+          const csv = `\uFEFF${lines.join('\r\n')}\r\n`;
+          downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `one-page-ledger-${stamp.date}-${stamp.time}.csv`);
+          showToast('CSV 账本已导出');
+        } catch (error) {
+          setDataStatus('导出 CSV 失败：浏览器未能创建下载文件。', 'error');
+          showToast('导出失败');
+        }
+      }
+
+      async function handleImportFile(file) {
+        if (!file || isImporting) return;
+        isImporting = true;
+        dom.importJsonButton.disabled = true;
+        setDataStatus('正在读取备份…');
+        try {
+          if (file.size > MAX_IMPORT_BYTES) throw new Error('备份文件超过 6 MB 上限。');
+          const text = await file.text();
+          if (dom.settingsView.hidden) return;
+          let payload;
+          try {
+            payload = JSON.parse(text);
+          } catch (error) {
+            throw new Error('文件不是有效的 JSON。');
+          }
+          if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('备份内容格式不正确。');
+          if (payload.format !== BACKUP_FORMAT) throw new Error('这不是一页账导出的备份文件。');
+          if (payload.version !== SCHEMA_VERSION) throw new Error('备份版本不受支持。');
+          if (!payload.data) throw new Error('备份缺少数据内容。');
+          let imported;
+          try {
+            imported = migrateState(payload.data);
+          } catch (error) {
+            throw new Error(error && error.message ? error.message : '备份数据格式不正确。');
+          }
+          if (dom.settingsView.hidden) return;
+          setDataStatus('');
+          const currentCount = state.records.length;
+          const importedCount = imported.records.length;
+          openConfirm({
+            title: '导入并覆盖当前数据？',
+            message: `当前账本有 ${currentCount} 笔账目。备份包含 ${importedCount} 笔账目、${imported.summaries.length} 天 12:00 汇总，以及资金、分类和汇总开关设置。导入后会全部覆盖，且无法撤销。`,
+            acceptLabel: '导入并覆盖',
+            tone: 'danger',
+            returnFocus: dom.importJsonButton,
+            onConfirm: () => {
+              if (!commitState(imported)) {
+                return { ok: false, message: '导入失败：无法写入本机存储，原数据没有改变。' };
+              }
+              categoryEditingId = null;
+              filterState = { keyword: '', categoryId: 'all', from: '', to: '' };
+              expandedSummaryDate = null;
+              fillFundsInputs();
+              dom.noonSwitch.setAttribute('aria-checked', String(state.settings.noonSummaryEnabled));
+              renderCategorySettings();
+              updateSettingsDataSummary();
+              renderHome();
+              scheduleTimeBoundaries();
+              return { ok: true };
+            },
+            onSuccess: () => {
+              setDataStatus(`已导入 ${importedCount} 条账目、${imported.summaries.length} 天汇总。`, 'success');
+              showToast(`已导入 ${importedCount} 条账目`);
+              focusElement(dom.importJsonButton);
+            }
+          });
+        } catch (error) {
+          const message = error && error.message ? error.message : '文件无法读取。';
+          setDataStatus(`导入失败：${message}`, 'error');
+          showToast('导入失败，请检查文件');
+        } finally {
+          isImporting = false;
+          dom.importJsonButton.disabled = false;
+          dom.importFileInput.value = '';
+        }
+      }
+
+      function requestClearData() {
+        if (state.records.length === 0 && state.summaries.length === 0) {
+          showToast('当前没有可清空的数据');
+          return;
+        }
+        openConfirm({
+          title: '清空全部数据？',
+          message: '这会删除所有账目和 12:00 汇总，无法撤销。初始余额、月预算、分类与汇总开关会保留。请输入“清空”以继续。',
+          acceptLabel: '清空数据',
+          tone: 'danger',
+          requirePhrase: '清空',
+          returnFocus: dom.clearDataButton,
+          onConfirm: () => {
+            const next = cloneState(state);
+            next.records = [];
+            next.summaries = [];
+            if (!commitState(next)) {
+              return { ok: false, message: '清空失败：无法写入本机存储，数据没有改变。' };
+            }
+            filterState = { keyword: '', categoryId: 'all', from: '', to: '' };
+            expandedSummaryDate = null;
+            renderHome();
+            updateSettingsDataSummary();
+            return { ok: true };
+          },
+          onSuccess: () => {
+            setDataStatus('账目与汇总已清空，资金与分类设置已保留。', 'success');
+            showToast('数据已清空');
+            focusElement(dom.importJsonButton);
+          }
+        });
+      }
+
+      /* ============================================================
+       * 时间边界与 12:00 自动生成
+       * ============================================================ */
+      function delayToNextNoon() {
+        const now = Date.now();
+        const todayKey = beijingParts(now).dateKey;
+        const todayNoon = noonTimestamp(todayKey);
+        const target = now < todayNoon ? todayNoon : noonTimestamp(shiftDateKey(todayKey, 1));
+        return Math.max(800, target - now + 700);
+      }
+
+      function delayToNextMidnight() {
+        const now = Date.now();
+        const todayKey = beijingParts(now).dateKey;
+        const target = Date.parse(`${shiftDateKey(todayKey, 1)}T00:00:00+08:00`);
+        return Math.max(1000, target - now + 700);
+      }
+
+      function refreshTimeSensitiveViews() {
+        renderHome();
+        if (activeSubpage === 'records') renderAllRecordsList();
+        if (activeSubpage === 'summaries') renderSummaryList();
+        if (activeSubpage === 'settings') updateSettingsDataSummary();
+        if (!dom.recordLayer.hidden) {
+          dom.dateInput.max = nowDateKey();
+        }
+      }
+
+      function syncAtTimeBoundary() {
+        if (state.settings.noonSummaryEnabled) {
+          syncSummariesAndPersist({ silent: true });
+        }
+        refreshTimeSensitiveViews();
+        scheduleTimeBoundaries();
+      }
+
+      function scheduleTimeBoundaries() {
+        if (noonTimer) {
+          window.clearTimeout(noonTimer);
+          noonTimer = null;
+        }
+        if (midnightTimer) {
+          window.clearTimeout(midnightTimer);
+          midnightTimer = null;
+        }
+        if (state.settings.noonSummaryEnabled) {
+          noonTimer = window.setTimeout(syncAtTimeBoundary, delayToNextNoon());
+        }
+        midnightTimer = window.setTimeout(syncAtTimeBoundary, delayToNextMidnight());
+      }
+
+      /* ============================================================
+       * 事件绑定
+       * ============================================================ */
+      function closeTopLayerFromKeyboard() {
+        if (!dom.confirmLayer.hidden) {
+          closeConfirm();
+          return true;
+        }
+        if (!dom.recordLayer.hidden) {
+          closeRecordSheet();
+          return true;
+        }
+        if (activeSubpage) {
+          closeSubpage();
+          return true;
+        }
+        return false;
+      }
+
+      function handleTabTrap(event) {
+        const dialog = getTopLayerDialog();
+        if (!dialog) return;
+        const focusable = getFocusableElements(dialog);
+        if (!focusable.length) {
+          event.preventDefault();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const active = document.activeElement;
+        if (!dialog.contains(active)) {
+          event.preventDefault();
+          (event.shiftKey ? last : first).focus();
+          return;
+        }
+        if (event.shiftKey && active === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && active === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+
+      function bindEvents() {
+        dom.settingsButton.addEventListener('click', () => openSubpage('settings', dom.settingsButton));
+        dom.addRecordButton.addEventListener('click', () => openRecordSheet('create', null, dom.addRecordButton));
+        dom.allRecordsButton.addEventListener('click', () => openSubpage('records', dom.allRecordsButton));
+        dom.recordsBackButton.addEventListener('click', () => closeSubpage());
+        dom.summariesBackButton.addEventListener('click', () => closeSubpage());
+        dom.settingsBackButton.addEventListener('click', () => closeSubpage());
+
+        document.addEventListener('click', (event) => {
+          if (!(event.target instanceof Element)) return;
+          const addEntry = event.target.closest('[data-add-entry]');
+          if (addEntry) {
+            openRecordSheet('create', null, addEntry);
+            return;
+          }
+          const summariesLink = event.target.closest('[data-open-summaries]');
+          if (summariesLink) {
+            openSubpage('summaries', summariesLink);
+          }
+        });
+
+        dom.recentList.addEventListener('click', (event) => {
+          if (!(event.target instanceof Element)) return;
+          const row = event.target.closest('button[data-record-id]');
+          if (!row) return;
+          openRecordSheet('edit', row.dataset.recordId, row);
+        });
+
+        dom.allRecordsList.addEventListener('click', (event) => {
+          if (!(event.target instanceof Element)) return;
+          const row = event.target.closest('button[data-record-id]');
+          if (!row) return;
+          openRecordSheet('edit', row.dataset.recordId, row);
+        });
+
+        dom.summaryList.addEventListener('click', (event) => {
+          if (!(event.target instanceof Element)) return;
+          const recordRow = event.target.closest('[data-record-id]');
+          if (recordRow) {
+            openRecordSheet('edit', recordRow.dataset.recordId, recordRow);
+            return;
+          }
+          const toggle = event.target.closest('[data-summary-date]');
+          if (!toggle) return;
+          const date = toggle.dataset.summaryDate;
+          expandedSummaryDate = expandedSummaryDate === date ? null : date;
+          renderSummaryList();
+        });
+
+        dom.filterSearch.addEventListener('input', () => {
+          filterState.keyword = dom.filterSearch.value;
+          renderAllRecordsList();
+        });
+        dom.filterCategory.addEventListener('change', () => {
+          filterState.categoryId = dom.filterCategory.value;
+          renderAllRecordsList();
+        });
+        dom.filterFrom.addEventListener('change', () => {
+          filterState.from = dom.filterFrom.value;
+          renderAllRecordsList();
+        });
+        dom.filterTo.addEventListener('change', () => {
+          filterState.to = dom.filterTo.value;
+          renderAllRecordsList();
+        });
+        dom.resetFiltersButton.addEventListener('click', resetFilters);
+
+        dom.amountInput.addEventListener('input', () => {
+          clearAmountError();
+          dom.formError.hidden = true;
+        });
+        dom.noteInput.addEventListener('input', () => {
+          dom.noteInput.removeAttribute('aria-invalid');
+          dom.formError.hidden = true;
+        });
+        dom.dateInput.addEventListener('input', clearTimeError);
+        dom.timeInput.addEventListener('input', clearTimeError);
+        dom.recordForm.addEventListener('submit', submitRecord);
+        dom.recordForm.querySelectorAll('[data-entry-type]').forEach((button) => {
+          button.addEventListener('click', () => {
+            if (isSavingRecord || recordCommitted) return;
+            selectedEntryType = button.dataset.entryType;
+            updateEntryTypeUI();
+            clearAmountError();
+            dom.formError.hidden = true;
+          });
+        });
+        dom.categoryPicker.addEventListener('click', (event) => {
+          if (!(event.target instanceof Element)) return;
+          const chip = event.target.closest('.category-chip');
+          if (!chip) return;
+          selectedCategoryId = chip.dataset.categoryId;
+          dom.categoryPicker.querySelectorAll('.category-chip').forEach((button) => {
+            button.setAttribute('aria-pressed', String(button === chip));
+          });
+          clearEntryCategoryError();
+        });
+        dom.recordCloseButton.addEventListener('click', () => closeRecordSheet());
+        dom.recordBackdrop.addEventListener('click', () => closeRecordSheet());
+        dom.deleteRecordButton.addEventListener('click', requestDeleteRecord);
+
+        dom.confirmCancelButton.addEventListener('click', () => closeConfirm());
+        dom.confirmAcceptButton.addEventListener('click', acceptConfirm);
+        dom.confirmBackdrop.addEventListener('click', () => closeConfirm());
+        dom.confirmInput.addEventListener('input', () => {
+          dom.confirmError.hidden = true;
+          updateConfirmAcceptAvailability();
+        });
+        dom.confirmInput.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' && !dom.confirmAcceptButton.disabled) {
+            event.preventDefault();
+            acceptConfirm();
+          }
+        });
+
+        dom.saveFundsButton.addEventListener('click', saveFundsSettings);
+        dom.initialBalanceInput.addEventListener('input', clearFundsError);
+        dom.budgetInput.addEventListener('input', clearFundsError);
+        dom.addCategoryForm.addEventListener('submit', (event) => {
+          event.preventDefault();
+          addCategory(dom.newCategoryInput.value);
+        });
+        dom.newCategoryInput.addEventListener('input', clearCategoryError);
+        dom.categoryList.addEventListener('click', (event) => {
+          if (!(event.target instanceof Element)) return;
+          const cancel = event.target.closest('[data-category-cancel]');
+          if (cancel) {
+            cancelCategoryEdit();
+            return;
+          }
+          const action = event.target.closest('[data-category-action]');
+          if (!action) return;
+          const row = action.closest('[data-category-id]');
+          if (!row) return;
+          const category = state.settings.categories.find((item) => item.id === row.dataset.categoryId);
+          if (!category) return;
+          if (action.dataset.categoryAction === 'edit') beginCategoryEdit(category.id);
+          else if (action.dataset.categoryAction === 'delete') requestDeleteCategory(category, action);
+        });
+        dom.categoryList.addEventListener('submit', (event) => {
+          const form = event.target.closest('.category-edit-row');
+          if (!form) return;
+          event.preventDefault();
+          const input = form.querySelector('.category-edit-input');
+          saveCategoryName(form.dataset.categoryId, input ? input.value : '');
+        });
+        dom.categoryList.addEventListener('keydown', (event) => {
+          if (event.key !== 'Escape') return;
+          const form = event.target.closest('.category-edit-row');
+          if (form) {
+            event.preventDefault();
+            event.stopPropagation();
+            cancelCategoryEdit();
+          }
+        });
+        dom.noonSwitch.addEventListener('click', toggleNoonSummary);
+
+        dom.exportJsonButton.addEventListener('click', exportBackup);
+        dom.exportCsvButton.addEventListener('click', exportCsv);
+        dom.importJsonButton.addEventListener('click', () => dom.importFileInput.click());
+        dom.importFileInput.addEventListener('change', () => {
+          const file = dom.importFileInput.files && dom.importFileInput.files[0];
+          if (file) handleImportFile(file);
+        });
+        dom.clearDataButton.addEventListener('click', requestClearData);
+
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') {
+            if (closeTopLayerFromKeyboard()) {
+              event.preventDefault();
+              return;
+            }
+          }
+          if (event.key === 'Tab') handleTabTrap(event);
+        });
+
+        window.addEventListener('resize', () => {
+          window.clearTimeout(resizeTimer);
+          resizeTimer = window.setTimeout(() => {
+            renderWeeklyChart();
+          }, 120);
+        });
+
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState !== 'visible') return;
+          syncAtTimeBoundary();
+        });
+      }
+
+      /* ============================================================
+       * PWA（仅在 HTTP/HTTPS 下启用，file:// 打开时保持零额外请求）
+       * ============================================================ */
+      function setUpPwa() {
+        if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
+        if (!document.querySelector('link[rel="manifest"]')) {
+          const manifest = document.createElement('link');
+          manifest.rel = 'manifest';
+          manifest.href = 'manifest.webmanifest';
+          document.head.append(manifest);
+        }
+        if (!document.querySelector('link[rel="apple-touch-icon"]')) {
+          const appleTouch = document.createElement('link');
+          appleTouch.rel = 'apple-touch-icon';
+          appleTouch.sizes = '180x180';
+          appleTouch.href = 'apple-touch-icon.png';
+          document.head.append(appleTouch);
+        }
+        if (!('serviceWorker' in navigator)) return;
+        const register = () => {
+          navigator.serviceWorker.register('./sw.js').catch(() => {
+            // 离线增强失败不影响记账主流程。
+          });
+        };
+        if (document.readyState === 'complete') register();
+        else window.addEventListener('load', register, { once: true });
+      }
+
+      /* ============================================================
+       * 初始化
+       * ============================================================ */
+      function initialize() {
+        const loaded = readInitialState();
+        state = loaded.state;
+        if (state.settings.noonSummaryEnabled) {
+          const next = cloneState(state);
+          applySummaryReconciliation(next, { generateMissing: true });
+          if (summariesChanged(state.summaries, next.summaries)) {
+            if (commitState(next)) state = next;
+          }
+        }
+        bindEvents();
+        renderHome();
+        syncLayerState();
+        scheduleTimeBoundaries();
+        setUpPwa();
+        if (loaded.error) {
+          window.setTimeout(() => showToast(loaded.error, 4200), 260);
+        }
+      }
+
+      initialize();
+    })();
+  </script>
+</body>
+</html>
