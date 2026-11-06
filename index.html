@@ -620,6 +620,322 @@
       letter-spacing: 0.02em;
     }
 
+    /* ===== 首页提醒条 ===== */
+    .reminder-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 12px 12px 13px;
+      color: #5a4a33;
+      background: linear-gradient(142deg, #fbf3e4 0%, #f6ecda 100%);
+      border: 1px solid #e8dbc3;
+      border-left: 3px solid var(--sand);
+      border-radius: 14px;
+    }
+    .reminder-banner.is-over {
+      color: #67322a;
+      background: linear-gradient(142deg, #fbeee8 0%, #f6e5de 100%);
+      border-color: #eed4ca;
+      border-left-color: var(--red);
+    }
+    .reminder-icon { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 2px; color: var(--sand); }
+    .reminder-banner.is-over .reminder-icon { color: var(--red); }
+    .reminder-copy { flex: 1 1 auto; min-width: 0; }
+    .reminder-title { font-size: 12.5px; font-weight: 600; line-height: 1.5; }
+    .reminder-text { margin-top: 2px; color: #7c6c53; font-size: 11.5px; line-height: 1.62; }
+    .reminder-banner.is-over .reminder-text { color: #8a5b4f; }
+    .reminder-actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+    .reminder-action {
+      min-height: 32px;
+      padding: 0 9px;
+      color: var(--ink-soft);
+      background: rgba(255, 253, 248, 0.72);
+      border: 1px solid rgba(179, 139, 95, 0.3);
+      border-radius: 9px;
+      font-size: 11.5px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .reminder-action:hover { background: #fffdf8; }
+    .reminder-dismiss {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      color: #8b7b62;
+      background: none;
+      border: 0;
+      border-radius: 8px;
+      font-size: 16px;
+      line-height: 1;
+    }
+    .reminder-dismiss:hover { color: var(--ink-soft); background: rgba(255, 253, 248, 0.6); }
+
+    /* ===== 储蓄目标 ===== */
+    .savings-card { padding: 17px 20px 16px; }
+    .savings-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .savings-name {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .savings-percent { flex: 0 0 auto; color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+    .savings-amount { display: flex; align-items: baseline; gap: 6px; margin-top: 9px; min-height: 32px; }
+    .savings-amount b {
+      color: var(--ink);
+      font-family: var(--font-serif);
+      font-size: 27px;
+      font-weight: 500;
+      line-height: 1.05;
+      letter-spacing: -0.025em;
+      font-variant-numeric: tabular-nums lining-nums;
+    }
+    .savings-amount span { color: var(--muted); font-size: 11.5px; }
+    .savings-bar {
+      height: 7px;
+      margin-top: 11px;
+      overflow: hidden;
+      background: #f0e9dc;
+      border-radius: 999px;
+    }
+    .savings-fill {
+      display: block;
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #d0b48c 0%, #b38b5f 100%);
+      transition: width 220ms ease;
+    }
+    .savings-card.is-done .savings-fill { background: linear-gradient(90deg, #8fac91, #4e7a61); }
+    .savings-meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 11.5px;
+      font-variant-numeric: tabular-nums;
+    }
+    .savings-meta b { color: var(--ink-soft); font-family: var(--font-serif); font-size: 12.5px; font-weight: 600; }
+
+    /* ===== 分类预算进度 ===== */
+    .budget-card { padding: 18px 20px 19px; }
+    .budget-list { display: flex; flex-direction: column; gap: 13px; margin-top: 14px; }
+    .budget-row { min-width: 0; }
+    .budget-row-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .budget-row-name {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--ink-soft);
+      font-weight: 500;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .budget-row-figures {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+    .budget-row-figures b { color: var(--ink-soft); font-family: var(--font-serif); font-size: 12px; font-weight: 500; }
+    .budget-row-figures .over { color: var(--red); font-weight: 600; }
+    .budget-row-figures .warn { color: #a1743f; font-weight: 600; }
+    .budget-track {
+      height: 6px;
+      margin-top: 7px;
+      overflow: hidden;
+      background: #f2ece1;
+      border-radius: 999px;
+    }
+    .budget-track-fill {
+      display: block;
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--sand);
+      opacity: 0.85;
+      transition: width 220ms ease;
+    }
+    .budget-track-fill.is-warn { background: #c08a55; opacity: 1; }
+    .budget-track-fill.is-over { background: var(--red); opacity: 1; }
+
+    /* ===== 日历 ===== */
+    .calendar-card { padding: 16px 16px 14px; }
+    .calendar-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .calendar-month {
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.01em;
+    }
+    .calendar-nav {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      color: var(--ink-soft);
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .calendar-nav:disabled { opacity: 0.35; }
+    .calendar-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-top: 13px;
+      color: var(--faint);
+      font-size: 10.5px;
+      text-align: center;
+    }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-top: 6px;
+    }
+    .calendar-day {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      min-height: 46px;
+      padding: 4px 2px;
+      color: var(--ink-soft);
+      background: var(--surface-soft);
+      border: 1px solid transparent;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
+    .calendar-day.is-blank { visibility: hidden; pointer-events: none; background: transparent; }
+    .calendar-day.has-expense { background: #fdf4ef; border-color: #f1ded5; }
+    .calendar-day.is-today { border-color: #bfd1c2; }
+    .calendar-day.is-today .cal-day-num { color: var(--green-deep); font-weight: 700; }
+    .calendar-day.is-selected { border-color: var(--green); background: var(--green-soft); }
+    .cal-day-num { font-weight: 500; }
+    .cal-day-amount {
+      max-width: 100%;
+      overflow: hidden;
+      color: var(--red);
+      font-size: 9px;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .cal-day-dot {
+      position: absolute;
+      top: 5px;
+      right: 6px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #9cb5a2;
+    }
+    .calendar-totals {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 13px;
+      padding-top: 11px;
+      border-top: 1px dashed var(--line-strong);
+      color: var(--muted);
+      font-size: 11.5px;
+      font-variant-numeric: tabular-nums;
+    }
+    .calendar-totals b { color: var(--ink-soft); }
+    .calendar-day-card { margin-top: 14px; padding: 15px 14px 6px; }
+    .calendar-day-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 2px;
+    }
+    .calendar-day-head h3 { color: var(--ink); font-size: 13px; font-weight: 600; }
+    .calendar-day-meta { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .calendar-day-list { margin-top: 8px; }
+    .calendar-day-empty { padding: 18px 4px 20px; color: var(--muted); font-size: 12px; text-align: center; }
+
+    /* ===== 设置页新增项 ===== */
+    .section-links { display: flex; align-items: center; gap: 8px; }
+    .setting-input.setting-input-text {
+      width: 150px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      text-align: right;
+      letter-spacing: 0.01em;
+    }
+    .budget-form-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 54px;
+      padding: 0 16px;
+    }
+    .budget-form-row + .budget-form-row { border-top: 1px solid #efe8db; }
+    .budget-form-name {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--ink-soft);
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .budget-form-entry { display: flex; align-items: baseline; gap: 4px; flex: 0 0 auto; }
+    .budget-form-entry input {
+      width: 104px;
+      padding: 8px 0;
+      color: var(--ink);
+      background: transparent;
+      border: 0;
+      border-radius: 6px;
+      outline: 0;
+      font-family: var(--font-serif);
+      font-size: 16px;
+      font-weight: 500;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .budget-form-entry input:focus { box-shadow: 0 0 0 3px rgba(45, 76, 62, 0.12); }
+    .budget-form-entry input[aria-invalid="true"] { color: var(--red); }
+    .budget-form-unit { color: var(--faint); font-size: 10.5px; }
+    .budget-form-empty { padding: 18px 16px; color: var(--muted); font-size: 12px; }
+
     /* ===== 底部操作 ===== */
     .dock {
       position: fixed;
@@ -1765,14 +2081,19 @@
       </header>
 
       <main class="main" id="mainContent">
+        <section class="reminder-banner" id="reminderBanner" aria-live="polite" hidden></section>
         <section class="balance-card" id="balanceCard" aria-labelledby="balanceHeading"></section>
+        <section class="card savings-card" id="savingsCard" aria-labelledby="savingsHeading" hidden></section>
         <section class="card compact-card today-card" id="todayCard" aria-labelledby="todayHeading"></section>
         <section class="card noon-card" id="noonCard" aria-labelledby="noonHeading" hidden></section>
 
         <section class="recent-section" aria-labelledby="recentHeading">
           <div class="section-head">
             <h2 id="recentHeading">最近明细</h2>
-            <button class="text-link" id="allRecordsButton" type="button">查看全部</button>
+            <div class="section-links">
+              <button class="text-link" id="calendarButton" type="button">日历</button>
+              <button class="text-link" id="allRecordsButton" type="button">查看全部</button>
+            </div>
           </div>
           <div class="card recent-card" id="recentList"></div>
         </section>
@@ -1790,6 +2111,14 @@
             <span class="card-meta" id="categoryTotal"></span>
           </div>
           <div id="categoryBreakdown"></div>
+        </section>
+
+        <section class="card budget-card" id="categoryBudgetCard" aria-labelledby="categoryBudgetHeading" hidden>
+          <div class="card-head">
+            <h2 class="card-title" id="categoryBudgetHeading">本月分类预算</h2>
+            <span class="card-meta" id="categoryBudgetMeta"></span>
+          </div>
+          <div id="categoryBudgetList"></div>
         </section>
 
         <p class="page-footnote">所有账目仅保存在此设备</p>
@@ -1873,6 +2202,36 @@
     </section>
   </div>
 
+  <!-- 日历 -->
+  <div class="subpage" id="calendarView" hidden>
+    <section class="subpage-panel" id="calendarPanel" role="dialog" aria-modal="true" aria-labelledby="calendarTitle">
+      <header class="subpage-header">
+        <button class="icon-button" id="calendarBackButton" type="button" aria-label="返回首页">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7"></path>
+          </svg>
+        </button>
+        <h2 id="calendarTitle">日历</h2>
+        <span aria-hidden="true"></span>
+      </header>
+      <div class="subpage-scroll" id="calendarContent">
+        <div class="card calendar-card">
+          <div class="calendar-toolbar">
+            <button class="calendar-nav" id="calendarPrevButton" type="button" aria-label="上个月">‹</button>
+            <div class="calendar-month" id="calendarMonthLabel"></div>
+            <button class="calendar-nav" id="calendarNextButton" type="button" aria-label="下个月">›</button>
+          </div>
+          <div class="calendar-weekdays" aria-hidden="true">
+            <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+          </div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+          <div class="calendar-totals" id="calendarTotals"></div>
+        </div>
+        <div class="card calendar-day-card" id="calendarDayCard" hidden></div>
+      </div>
+    </section>
+  </div>
+
   <!-- 设置 -->
   <div class="subpage" id="settingsView" hidden>
     <section class="subpage-panel" id="settingsPanel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
@@ -1913,6 +2272,32 @@
           <p class="settings-error" id="fundsError" role="alert" hidden></p>
         </section>
 
+        <section class="settings-section" aria-labelledby="savingsTitle">
+          <div class="settings-title-row">
+            <h3 id="savingsTitle">储蓄目标</h3>
+          </div>
+          <div class="settings-card">
+            <label class="setting-row" for="savingsNameInput">
+              <span class="setting-label">目标名称</span>
+              <span class="setting-entry">
+                <input class="setting-input setting-input-text" id="savingsNameInput" type="text" maxlength="20" autocomplete="off" placeholder="例如 换手机">
+              </span>
+            </label>
+            <label class="setting-row" for="savingsAmountInput">
+              <span class="setting-label">目标金额</span>
+              <span class="setting-entry">
+                <span class="setting-currency" aria-hidden="true">¥</span>
+                <input class="setting-input" id="savingsAmountInput" type="text" inputmode="decimal" autocomplete="off" placeholder="不设置">
+              </span>
+            </label>
+            <div class="settings-form-action">
+              <button class="primary-button" id="saveSavingsButton" type="button">保存储蓄目标</button>
+            </div>
+            <p class="settings-note">进度按当前余额计算；目标金额留空表示不设置，名称可留空。</p>
+          </div>
+          <p class="settings-error" id="savingsError" role="alert" hidden></p>
+        </section>
+
         <section class="settings-section" aria-labelledby="categoriesTitle">
           <div class="settings-title-row">
             <h3 id="categoriesTitle">分类</h3>
@@ -1927,6 +2312,21 @@
             </form>
           </div>
           <p class="settings-error" id="categoryError" role="alert" hidden></p>
+        </section>
+
+        <section class="settings-section" aria-labelledby="categoryBudgetTitle">
+          <div class="settings-title-row">
+            <h3 id="categoryBudgetTitle">分类预算</h3>
+            <span class="card-meta">每月</span>
+          </div>
+          <div class="settings-card">
+            <div id="categoryBudgetForm"></div>
+            <div class="settings-form-action">
+              <button class="primary-button" id="saveCategoryBudgetsButton" type="button">保存分类预算</button>
+            </div>
+            <p class="settings-note">留空表示该分类不设上限；设置后首页会出现分类预算进度，接近或超出时会提醒。</p>
+          </div>
+          <p class="settings-error" id="budgetError" role="alert" hidden></p>
         </section>
 
         <section class="settings-section" aria-labelledby="summarySettingTitle">
@@ -2081,7 +2481,7 @@
        * ============================================================ */
       const TIME_ZONE = 'Asia/Shanghai';
       const STORAGE_KEY = 'ledger-v1';
-      const SCHEMA_VERSION = 1;
+      const SCHEMA_VERSION = 2;
       const BACKUP_FORMAT = 'one-page-ledger-backup';
       const OTHER_CATEGORY_ID = 'other';
       const OTHER_CATEGORY_NAME = '其他';
@@ -2121,7 +2521,13 @@
         appRoot: byId('appRoot'),
         skipLink: document.querySelector('.skip-link'),
         settingsButton: byId('settingsButton'),
+        reminderBanner: byId('reminderBanner'),
         balanceCard: byId('balanceCard'),
+        savingsCard: byId('savingsCard'),
+        calendarButton: byId('calendarButton'),
+        categoryBudgetCard: byId('categoryBudgetCard'),
+        categoryBudgetList: byId('categoryBudgetList'),
+        categoryBudgetMeta: byId('categoryBudgetMeta'),
         todayCard: byId('todayCard'),
         noonCard: byId('noonCard'),
         recentList: byId('recentList'),
@@ -2149,6 +2555,17 @@
         summariesBackButton: byId('summariesBackButton'),
         summaryList: byId('summaryList'),
 
+        calendarView: byId('calendarView'),
+        calendarPanel: byId('calendarPanel'),
+        calendarBackButton: byId('calendarBackButton'),
+        calendarContent: byId('calendarContent'),
+        calendarMonthLabel: byId('calendarMonthLabel'),
+        calendarPrevButton: byId('calendarPrevButton'),
+        calendarNextButton: byId('calendarNextButton'),
+        calendarGrid: byId('calendarGrid'),
+        calendarTotals: byId('calendarTotals'),
+        calendarDayCard: byId('calendarDayCard'),
+
         settingsView: byId('settingsView'),
         settingsPanel: byId('settingsPanel'),
         settingsBackButton: byId('settingsBackButton'),
@@ -2157,6 +2574,13 @@
         budgetInput: byId('budgetInput'),
         saveFundsButton: byId('saveFundsButton'),
         fundsError: byId('fundsError'),
+        savingsNameInput: byId('savingsNameInput'),
+        savingsAmountInput: byId('savingsAmountInput'),
+        saveSavingsButton: byId('saveSavingsButton'),
+        savingsError: byId('savingsError'),
+        categoryBudgetForm: byId('categoryBudgetForm'),
+        saveCategoryBudgetsButton: byId('saveCategoryBudgetsButton'),
+        budgetError: byId('budgetError'),
         categoryCount: byId('categoryCount'),
         categoryList: byId('categoryList'),
         addCategoryForm: byId('addCategoryForm'),
@@ -2219,6 +2643,12 @@
           back: dom.summariesBackButton,
           scroll: dom.summariesPanel.querySelector('.subpage-scroll')
         },
+        calendar: {
+          element: dom.calendarView,
+          panel: dom.calendarPanel,
+          back: dom.calendarBackButton,
+          scroll: dom.calendarContent
+        },
         settings: {
           element: dom.settingsView,
           panel: dom.settingsPanel,
@@ -2241,6 +2671,8 @@
       let isImporting = false;
       let categoryEditingId = null;
       let expandedSummaryDate = null;
+      let calendarMonthKey = currentMonthKey();
+      let calendarSelectedDate = null;
       let filterState = { keyword: '', categoryId: 'all', from: '', to: '' };
       let confirmConfig = null;
       let confirmBusy = false;
@@ -2445,7 +2877,13 @@
         const { allowNegative = false, allowZero = false, fieldLabel = '金额' } = options;
         let text = String(raw == null ? '' : raw).trim();
         if (!text) return { ok: false, error: `请输入${fieldLabel}。` };
-        text = text.replace(/[，,]/g, '.');
+        text = text.replace(/[，]/g, '.');
+        // 输入框回填的是带千分位的金额（如 1,200.00），先去掉数字分组的逗号再校验。
+        if (/^\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?$/.test(text)) {
+          text = text.replace(/,/g, '');
+        } else {
+          text = text.replace(/,/g, '.');
+        }
         let negative = false;
         if (/^[−-]/.test(text)) {
           negative = true;
@@ -2548,7 +2986,11 @@
             initialBalanceCents: 0,
             monthlyBudgetCents: null,
             noonSummaryEnabled: true,
-            categories: cloneDefaultCategories()
+            categories: cloneDefaultCategories(),
+            savingsGoalCents: null,
+            savingsGoalName: '',
+            categoryBudgets: {},
+            reminderDismissedOn: null
           }
         };
       }
@@ -2562,7 +3004,11 @@
             initialBalanceCents: source.settings.initialBalanceCents,
             monthlyBudgetCents: source.settings.monthlyBudgetCents,
             noonSummaryEnabled: source.settings.noonSummaryEnabled,
-            categories: source.settings.categories.map((category) => ({ ...category }))
+            categories: source.settings.categories.map((category) => ({ ...category })),
+            savingsGoalCents: source.settings.savingsGoalCents,
+            savingsGoalName: source.settings.savingsGoalName,
+            categoryBudgets: { ...source.settings.categoryBudgets },
+            reminderDismissedOn: source.settings.reminderDismissedOn
           }
         };
       }
@@ -2656,6 +3102,40 @@
         );
         assertData(typeof settings.noonSummaryEnabled === 'boolean', '12:00 汇总开关格式不正确。');
 
+        const savingsGoalCents = settings.savingsGoalCents === undefined ? null : settings.savingsGoalCents;
+        assertData(
+          savingsGoalCents === null ||
+          (Number.isSafeInteger(savingsGoalCents) && savingsGoalCents > 0),
+          '储蓄目标金额格式不正确。'
+        );
+        const savingsGoalName = settings.savingsGoalName === undefined ? '' : settings.savingsGoalName;
+        assertData(
+          typeof savingsGoalName === 'string' && savingsGoalName.trim().length <= 20,
+          '储蓄目标名称格式不正确。'
+        );
+
+        const rawBudgets = settings.categoryBudgets === undefined ? {} : settings.categoryBudgets;
+        assertData(
+          rawBudgets && typeof rawBudgets === 'object' && !Array.isArray(rawBudgets),
+          '分类预算格式不正确。'
+        );
+        const categoryBudgets = {};
+        for (const [categoryId, cents] of Object.entries(rawBudgets)) {
+          assertData(categoryIds.has(categoryId), '分类预算引用了不存在的分类。');
+          assertData(
+            Number.isSafeInteger(cents) && cents > 0,
+            '分类预算金额格式不正确。'
+          );
+          categoryBudgets[categoryId] = cents;
+        }
+
+        const reminderDismissedOn = settings.reminderDismissedOn === undefined ? null : settings.reminderDismissedOn;
+        assertData(
+          reminderDismissedOn === null ||
+          (typeof reminderDismissedOn === 'string' && isValidDateKey(reminderDismissedOn)),
+          '提醒状态格式不正确。'
+        );
+
         return {
           version: SCHEMA_VERSION,
           records,
@@ -2664,7 +3144,11 @@
             initialBalanceCents: settings.initialBalanceCents,
             monthlyBudgetCents: settings.monthlyBudgetCents,
             noonSummaryEnabled: settings.noonSummaryEnabled,
-            categories
+            categories,
+            savingsGoalCents,
+            savingsGoalName: savingsGoalName.trim(),
+            categoryBudgets,
+            reminderDismissedOn
           }
         };
       }
@@ -2674,9 +3158,14 @@
         const version = Number(input.version);
         assertData(Number.isInteger(version) && version >= 1, '数据版本无效。');
         assertData(version <= SCHEMA_VERSION, '数据版本高于当前应用，无法读取。');
-        // 迁移预留：未来升级 SCHEMA_VERSION 时在此按版本升级字段。
-        if (version < SCHEMA_VERSION) {
-          // 目前 v1 为首个版本，无旧版迁移。
+        if (version < 2) {
+          // v1 → v2：新增储蓄目标、分类预算与提醒状态，旧账本按未设置处理。
+          assertData(input.settings && typeof input.settings === 'object', '设置数据格式不正确。');
+          if (input.settings.savingsGoalCents === undefined) input.settings.savingsGoalCents = null;
+          if (input.settings.savingsGoalName === undefined) input.settings.savingsGoalName = '';
+          if (input.settings.categoryBudgets === undefined) input.settings.categoryBudgets = {};
+          if (input.settings.reminderDismissedOn === undefined) input.settings.reminderDismissedOn = null;
+          input.version = SCHEMA_VERSION;
         }
         return normalizeState(input);
       }
@@ -2690,7 +3179,18 @@
         }
         if (raw === null) return { state: createDefaultState(), error: '' };
         try {
-          return { state: migrateState(JSON.parse(raw)), error: '' };
+          const parsed = JSON.parse(raw);
+          const originalVersion = Number(parsed.version);
+          const migrated = migrateState(parsed);
+          // 旧版本账本升级后立即写回，避免每次打开重复迁移。
+          if (originalVersion !== SCHEMA_VERSION) {
+            try {
+              window.localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+            } catch (error) {
+              // 写回失败时仍使用内存中已完成迁移的数据。
+            }
+          }
+          return { state: migrated, error: '' };
         } catch (error) {
           return { state: createDefaultState(), error: '本地账本读取失败，已按空白账本启动。' };
         }
@@ -2910,12 +3410,15 @@
        * 首页渲染
        * ============================================================ */
       function renderHome() {
+        renderReminderBanner();
         renderBalanceCard();
+        renderSavingsCard();
         renderTodayCard();
         renderNoonCard();
         renderRecentList();
         renderWeeklyChart();
         renderCategoryBreakdown();
+        renderCategoryBudgets();
       }
 
       function renderBalanceCard() {
@@ -3241,6 +3744,334 @@
       }
 
       /* ============================================================
+       * 储蓄目标、分类预算与首页提醒
+       * ============================================================ */
+      function renderSavingsCard() {
+        const goal = state.settings.savingsGoalCents;
+        if (goal === null || goal <= 0) {
+          dom.savingsCard.hidden = true;
+          dom.savingsCard.innerHTML = '';
+          dom.savingsCard.classList.remove('is-done');
+          return;
+        }
+        const balance = getBalanceCents();
+        const saved = Math.max(0, balance);
+        const ratio = Math.max(0, Math.min(1, saved / goal));
+        const percent = Math.floor(ratio * 100);
+        const remaining = Math.max(0, goal - saved);
+        const done = saved >= goal;
+        const name = state.settings.savingsGoalName || '储蓄目标';
+
+        dom.savingsCard.hidden = false;
+        dom.savingsCard.classList.toggle('is-done', done);
+        dom.savingsCard.innerHTML = `
+          <div class="savings-top">
+            <h2 class="savings-name" id="savingsHeading">${escapeHTML(name)}</h2>
+            <span class="savings-percent">${done ? '已达成' : `已完成 ${percent}%`}</span>
+          </div>
+          <div class="savings-amount" aria-label="已存 ${formatYuan(saved)}，目标 ${formatYuan(goal)}">
+            <b>${formatYuan(saved)}</b>
+            <span>目标 ${formatYuan(goal)}</span>
+          </div>
+          <div class="savings-bar" role="progressbar" aria-label="储蓄目标进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" aria-valuetext="${done ? '已达成' : `还差 ${formatYuan(remaining)}`}">
+            <span class="savings-fill" style="width: ${(ratio * 100).toFixed(1)}%"></span>
+          </div>
+          <div class="savings-meta">
+            <span>${done ? '目标已达成' : `还差 <b>${formatYuan(remaining)}</b>`}</span>
+            <span>按当前余额计算</span>
+          </div>
+        `;
+      }
+
+      function renderCategoryBudgets() {
+        const budgets = state.settings.categoryBudgets;
+        const entries = state.settings.categories
+          .filter((category) => budgets[category.id] > 0)
+          .map((category) => ({ category, budgetCents: budgets[category.id] }));
+        if (!entries.length) {
+          dom.categoryBudgetCard.hidden = true;
+          dom.categoryBudgetList.textContent = '';
+          dom.categoryBudgetMeta.textContent = '';
+          return;
+        }
+        const spentByCategory = new Map();
+        for (const record of getMonthRecords()) {
+          if (record.type !== 'expense') continue;
+          spentByCategory.set(record.categoryId, (spentByCategory.get(record.categoryId) || 0) + record.amountCents);
+        }
+        const totalBudget = entries.reduce((sum, entry) => sum + entry.budgetCents, 0);
+        const totalSpent = entries.reduce((sum, entry) => sum + (spentByCategory.get(entry.category.id) || 0), 0);
+        const overCount = entries.filter((entry) => (spentByCategory.get(entry.category.id) || 0) > entry.budgetCents).length;
+
+        dom.categoryBudgetMeta.textContent = overCount
+          ? `${overCount} 项超支`
+          : `${formatYuan(totalSpent)} / ${formatYuan(totalBudget)}`;
+
+        dom.categoryBudgetList.textContent = '';
+        const list = document.createElement('div');
+        list.className = 'budget-list';
+        for (const entry of entries) {
+          const spent = spentByCategory.get(entry.category.id) || 0;
+          const ratio = entry.budgetCents ? spent / entry.budgetCents : 0;
+          const over = spent > entry.budgetCents;
+          const warn = !over && ratio >= 0.8;
+          const width = Math.min(100, Math.round(ratio * 1000) / 10);
+
+          const row = document.createElement('div');
+          row.className = 'budget-row';
+          const head = document.createElement('div');
+          head.className = 'budget-row-head';
+          const name = document.createElement('span');
+          name.className = 'budget-row-name';
+          name.textContent = entry.category.name;
+          const figures = document.createElement('span');
+          figures.className = 'budget-row-figures';
+          const amount = document.createElement('b');
+          amount.textContent = formatYuan(spent);
+          const suffix = document.createElement('span');
+          suffix.className = over ? 'over' : (warn ? 'warn' : '');
+          suffix.textContent = ` / ${formatYuan(entry.budgetCents)} · ${Math.round(ratio * 100)}%`;
+          figures.append(amount, suffix);
+          head.append(name, figures);
+
+          const track = document.createElement('div');
+          track.className = 'budget-track';
+          const fill = document.createElement('span');
+          fill.className = `budget-track-fill${over ? ' is-over' : (warn ? ' is-warn' : '')}`;
+          fill.style.width = `${width}%`;
+          track.append(fill);
+
+          row.append(head, track);
+          list.append(row);
+        }
+        dom.categoryBudgetCard.hidden = false;
+        dom.categoryBudgetList.append(list);
+      }
+
+      function computeReminder() {
+        if (!state.records.length) return null;
+        if (state.settings.reminderDismissedOn === nowDateKey()) return null;
+
+        const budget = state.settings.monthlyBudgetCents;
+        const monthExpense = sumAmount(expensesIn(getMonthRecords()));
+        if (budget !== null && budget > 0 && monthExpense > 0) {
+          const ratio = monthExpense / budget;
+          if (ratio >= 0.8) {
+            return {
+              kind: 'budget',
+              over: monthExpense > budget,
+              ratio,
+              spent: monthExpense,
+              budget
+            };
+          }
+        }
+
+        const todayKey = nowDateKey();
+        const yesterdayKey = shiftDateKey(todayKey, -1);
+        const hasBefore = state.records.some((record) => dateKeyFromRecord(record) < yesterdayKey);
+        const hasYesterday = state.records.some((record) => dateKeyFromRecord(record) === yesterdayKey);
+        const recent = state.records.some((record) => dateKeyFromRecord(record) >= shiftDateKey(todayKey, -7));
+        if (hasBefore && !hasYesterday && recent) return { kind: 'missed' };
+        return null;
+      }
+
+      function renderReminderBanner() {
+        const reminder = computeReminder();
+        if (!reminder) {
+          dom.reminderBanner.hidden = true;
+          dom.reminderBanner.innerHTML = '';
+          dom.reminderBanner.classList.remove('is-over');
+          return;
+        }
+
+        const icon = '<svg class="reminder-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2v8.4"></path><circle cx="10" cy="15.4" r="1.1" fill="currentColor" stroke="none"></circle></svg>';
+        dom.reminderBanner.hidden = false;
+
+        if (reminder.kind === 'budget') {
+          const percent = Math.round(reminder.ratio * 100);
+          const detail = reminder.over
+            ? `超出 ${formatYuan(reminder.spent - reminder.budget)} · 预算 ${formatYuan(reminder.budget)}`
+            : `还剩 ${formatYuan(reminder.budget - reminder.spent)} · 预算 ${formatYuan(reminder.budget)}`;
+          dom.reminderBanner.classList.toggle('is-over', reminder.over);
+          dom.reminderBanner.innerHTML = `
+            ${icon}
+            <div class="reminder-copy">
+              <p class="reminder-title">${reminder.over ? '本月预算已超支' : `本月预算已用 ${percent}%`}</p>
+              <p class="reminder-text">${detail}</p>
+            </div>
+            <div class="reminder-actions">
+              <button class="reminder-action" type="button" data-open-records>看明细</button>
+              <button class="reminder-dismiss" type="button" data-dismiss-reminder aria-label="今天不再提醒">×</button>
+            </div>
+          `;
+          return;
+        }
+
+        dom.reminderBanner.classList.remove('is-over');
+        dom.reminderBanner.innerHTML = `
+          ${icon}
+          <div class="reminder-copy">
+            <p class="reminder-title">昨天没有记账</p>
+            <p class="reminder-text">补一笔昨天的账，这个月的统计才完整。</p>
+          </div>
+          <div class="reminder-actions">
+            <button class="reminder-action" type="button" data-add-yesterday>补记</button>
+            <button class="reminder-dismiss" type="button" data-dismiss-reminder aria-label="今天不再提醒">×</button>
+          </div>
+        `;
+      }
+
+      function dismissReminder() {
+        const next = cloneState(state);
+        next.settings.reminderDismissedOn = nowDateKey();
+        if (commitState(next)) renderHome();
+      }
+
+      /* ============================================================
+       * 日历
+       * ============================================================ */
+      // 日历格子里只放紧凑金额：整数不带小数，大额用「万」。
+      function formatCalendarAmount(cents) {
+        const yuan = cents / 100;
+        if (yuan >= 10000) {
+          const wan = yuan / 10000;
+          return `${wan >= 10 ? Math.round(wan) : wan.toFixed(1).replace(/\.0$/, '')}万`;
+        }
+        if (Number.isInteger(yuan)) return String(yuan);
+        return yuan.toFixed(yuan >= 100 ? 0 : 1);
+      }
+
+      function shiftMonthKey(monthKey, delta) {
+        const year = Number(monthKey.slice(0, 4));
+        const month = Number(monthKey.slice(5, 7));
+        const date = new Date(Date.UTC(year, month - 1 + delta, 1));
+        return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}`;
+      }
+
+      function prepareCalendarView() {
+        calendarMonthKey = currentMonthKey();
+        calendarSelectedDate = nowDateKey();
+        renderCalendar();
+      }
+
+      function renderCalendar() {
+        const todayKey = nowDateKey();
+        const monthKey = calendarMonthKey;
+        const year = Number(monthKey.slice(0, 4));
+        const month = Number(monthKey.slice(5, 7));
+        dom.calendarMonthLabel.textContent = `${year}年${month}月`;
+        dom.calendarNextButton.disabled = monthKey >= currentMonthKey();
+
+        const monthRecords = state.records.filter((record) => dateKeyFromRecord(record).startsWith(monthKey));
+        const byDate = new Map();
+        for (const record of monthRecords) {
+          const key = dateKeyFromRecord(record);
+          if (!byDate.has(key)) byDate.set(key, { expense: 0, income: 0 });
+          const bucket = byDate.get(key);
+          if (record.type === 'expense') bucket.expense += record.amountCents;
+          else bucket.income += record.amountCents;
+        }
+
+        const firstDow = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+        const leading = (firstDow + 6) % 7;
+        const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+        dom.calendarGrid.textContent = '';
+        for (let i = 0; i < leading; i += 1) {
+          const blank = document.createElement('span');
+          blank.className = 'calendar-day is-blank';
+          blank.setAttribute('aria-hidden', 'true');
+          dom.calendarGrid.append(blank);
+        }
+
+        for (let day = 1; day <= daysInMonth; day += 1) {
+          const dateKey = `${monthKey}-${pad2(day)}`;
+          const bucket = byDate.get(dateKey);
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'calendar-day';
+          button.dataset.date = dateKey;
+          const spoken = [];
+          if (bucket && bucket.expense) spoken.push(`支出 ${formatYuan(bucket.expense)}`);
+          if (bucket && bucket.income) spoken.push(`收入 ${formatYuan(bucket.income)}`);
+          button.setAttribute('aria-label', `${month}月${day}日，${spoken.length ? spoken.join('，') : '没有记录'}`);
+          button.setAttribute('aria-pressed', String(dateKey === calendarSelectedDate));
+          if (dateKey === todayKey) button.classList.add('is-today');
+          if (dateKey === calendarSelectedDate) button.classList.add('is-selected');
+          if (bucket && bucket.expense > 0) button.classList.add('has-expense');
+
+          const num = document.createElement('span');
+          num.className = 'cal-day-num';
+          num.textContent = String(day);
+          button.append(num);
+          if (bucket && bucket.expense > 0) {
+            const amount = document.createElement('span');
+            amount.className = 'cal-day-amount';
+            amount.textContent = formatCalendarAmount(bucket.expense);
+            button.append(amount);
+          } else if (bucket && bucket.income > 0) {
+            const dot = document.createElement('span');
+            dot.className = 'cal-day-dot';
+            button.append(dot);
+          }
+          dom.calendarGrid.append(button);
+        }
+
+        dom.calendarTotals.innerHTML = `
+          <span>本月支出 <b>${formatYuan(sumAmount(expensesIn(monthRecords)))}</b></span>
+          <span>本月收入 <b>${formatYuan(sumAmount(incomesIn(monthRecords)))}</b></span>
+        `;
+
+        renderCalendarDay();
+      }
+
+      function renderCalendarDay() {
+        const dateKey = calendarSelectedDate;
+        if (!dateKey) {
+          dom.calendarDayCard.hidden = true;
+          dom.calendarDayCard.textContent = '';
+          return;
+        }
+        const dayRecords = sortedRecordsDescending().filter((record) => dateKeyFromRecord(record) === dateKey);
+        const expense = sumAmount(expensesIn(dayRecords));
+        const income = sumAmount(incomesIn(dayRecords));
+        const year = Number(dateKey.slice(0, 4));
+        const month = Number(dateKey.slice(5, 7));
+        const day = Number(dateKey.slice(8, 10));
+        const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
+        const summaryParts = [];
+        if (expense) summaryParts.push(`支出 ${formatYuan(expense)}`);
+        if (income) summaryParts.push(`收入 ${formatYuan(income)}`);
+
+        dom.calendarDayCard.hidden = false;
+        dom.calendarDayCard.innerHTML = `
+          <div class="calendar-day-head">
+            <h3>${month}月${day}日 <span class="calendar-day-meta">${weekday}</span></h3>
+            <span class="calendar-day-meta">${summaryParts.length ? summaryParts.join(' · ') : '没有记录'}</span>
+          </div>
+        `;
+        const list = document.createElement('div');
+        list.className = 'calendar-day-list';
+        if (!dayRecords.length) {
+          const empty = document.createElement('p');
+          empty.className = 'calendar-day-empty';
+          empty.textContent = '这一天没有账目。';
+          list.append(empty);
+          const action = document.createElement('button');
+          action.type = 'button';
+          action.className = 'empty-action';
+          action.dataset.addEntry = '1';
+          action.textContent = '补一笔';
+          list.append(action);
+        } else {
+          const todayKey = nowDateKey();
+          for (const record of dayRecords) list.append(createDetailRecordRow(record, todayKey));
+        }
+        dom.calendarDayCard.append(list);
+      }
+
+      /* ============================================================
        * 浮层、焦点与通用反馈
        * ============================================================ */
       function motionDelay(milliseconds) {
@@ -3337,6 +4168,7 @@
         lastFocusedBeforeSubpage = trigger || document.activeElement;
         if (kind === 'records') prepareRecordsView();
         else if (kind === 'summaries') prepareSummariesView();
+        else if (kind === 'calendar') prepareCalendarView();
         else if (kind === 'settings') prepareSettingsView();
 
         if (subpageCloseTimer) {
@@ -3672,6 +4504,13 @@
         dom.noonSwitch.setAttribute('aria-checked', String(state.settings.noonSummaryEnabled));
         dom.saveFundsButton.disabled = false;
         dom.saveFundsButton.textContent = '保存资金设置';
+        fillSavingsInputs();
+        clearSavingsError();
+        dom.saveSavingsButton.disabled = false;
+        dom.saveSavingsButton.textContent = '保存储蓄目标';
+        renderCategoryBudgetForm();
+        dom.saveCategoryBudgetsButton.disabled = false;
+        dom.saveCategoryBudgetsButton.textContent = '保存分类预算';
         updateSettingsDataSummary();
         renderCategorySettings();
         dom.settingsContent.scrollTop = 0;
@@ -3709,6 +4548,173 @@
         dom.fundsError.textContent = '';
         dom.initialBalanceInput.removeAttribute('aria-invalid');
         dom.budgetInput.removeAttribute('aria-invalid');
+      }
+
+      /* ---------- 储蓄目标 ---------- */
+      function fillSavingsInputs() {
+        dom.savingsNameInput.value = state.settings.savingsGoalName;
+        dom.savingsAmountInput.value = state.settings.savingsGoalCents === null
+          ? ''
+          : formatInputMoney(state.settings.savingsGoalCents, false);
+        dom.savingsNameInput.removeAttribute('aria-invalid');
+        dom.savingsAmountInput.removeAttribute('aria-invalid');
+      }
+
+      function clearSavingsError() {
+        dom.savingsError.hidden = true;
+        dom.savingsError.textContent = '';
+        dom.savingsNameInput.removeAttribute('aria-invalid');
+        dom.savingsAmountInput.removeAttribute('aria-invalid');
+      }
+
+      function showSavingsError(message, field) {
+        dom.savingsError.textContent = message;
+        dom.savingsError.hidden = false;
+        if (field === 'name') {
+          dom.savingsNameInput.setAttribute('aria-invalid', 'true');
+          dom.savingsNameInput.focus();
+        } else if (field === 'amount') {
+          dom.savingsAmountInput.setAttribute('aria-invalid', 'true');
+          dom.savingsAmountInput.focus();
+        }
+      }
+
+      function saveSavingsSettings() {
+        if (isSavingSettings) return;
+        clearSavingsError();
+        const nameRaw = dom.savingsNameInput.value.trim();
+        if (nameRaw.length > 20) {
+          showSavingsError('目标名称最多 20 个字。', 'name');
+          return;
+        }
+        const amountRaw = dom.savingsAmountInput.value.trim();
+        let amountCents = null;
+        if (amountRaw) {
+          const amountResult = parseMoneyCents(amountRaw, {
+            allowNegative: false,
+            allowZero: false,
+            fieldLabel: '储蓄目标'
+          });
+          if (!amountResult.ok) {
+            showSavingsError(amountResult.error, 'amount');
+            return;
+          }
+          amountCents = amountResult.cents;
+        }
+
+        isSavingSettings = true;
+        dom.saveSavingsButton.disabled = true;
+        dom.saveSavingsButton.textContent = '保存中…';
+        try {
+          const next = cloneState(state);
+          next.settings.savingsGoalCents = amountCents;
+          next.settings.savingsGoalName = nameRaw;
+          if (!commitState(next)) throw new Error('write failed');
+          fillSavingsInputs();
+          renderHome();
+          showToast(amountCents === null ? '已取消储蓄目标' : '储蓄目标已保存');
+        } catch (error) {
+          showSavingsError('保存失败：本机存储不可用或已满。');
+        } finally {
+          isSavingSettings = false;
+          dom.saveSavingsButton.disabled = false;
+          dom.saveSavingsButton.textContent = '保存储蓄目标';
+        }
+      }
+
+      /* ---------- 分类预算 ---------- */
+      function clearBudgetError() {
+        dom.budgetError.hidden = true;
+        dom.budgetError.textContent = '';
+        dom.categoryBudgetForm.querySelectorAll('input[aria-invalid="true"]').forEach((input) => {
+          input.removeAttribute('aria-invalid');
+        });
+      }
+
+      function showBudgetError(message, input) {
+        dom.budgetError.textContent = message;
+        dom.budgetError.hidden = false;
+        if (input) {
+          input.setAttribute('aria-invalid', 'true');
+          input.focus();
+        }
+      }
+
+      function renderCategoryBudgetForm() {
+        dom.categoryBudgetForm.textContent = '';
+        const budgets = state.settings.categoryBudgets;
+        for (const category of state.settings.categories) {
+          const row = document.createElement('label');
+          row.className = 'budget-form-row';
+          row.setAttribute('for', `budget-input-${category.id}`);
+
+          const name = document.createElement('span');
+          name.className = 'budget-form-name';
+          name.textContent = category.name;
+
+          const entry = document.createElement('span');
+          entry.className = 'budget-form-entry';
+          const currency = document.createElement('span');
+          currency.className = 'setting-currency';
+          currency.setAttribute('aria-hidden', 'true');
+          currency.textContent = '¥';
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.inputMode = 'decimal';
+          input.autocomplete = 'off';
+          input.id = `budget-input-${category.id}`;
+          input.dataset.categoryId = category.id;
+          input.placeholder = '不设置';
+          input.value = budgets[category.id] ? formatInputMoney(budgets[category.id], false) : '';
+          input.addEventListener('input', () => {
+            input.removeAttribute('aria-invalid');
+            clearBudgetError();
+          });
+          entry.append(currency, input);
+
+          row.append(name, entry);
+          dom.categoryBudgetForm.append(row);
+        }
+        clearBudgetError();
+      }
+
+      function saveCategoryBudgets() {
+        if (isSavingSettings) return;
+        clearBudgetError();
+        const inputs = Array.from(dom.categoryBudgetForm.querySelectorAll('input[data-category-id]'));
+        const nextBudgets = {};
+        for (const input of inputs) {
+          const raw = input.value.trim();
+          if (!raw) continue;
+          const result = parseMoneyCents(raw, {
+            allowNegative: false,
+            allowZero: false,
+            fieldLabel: '分类预算'
+          });
+          if (!result.ok) {
+            showBudgetError(`${categoryNameFor(state, input.dataset.categoryId)}：${result.error}`, input);
+            return;
+          }
+          nextBudgets[input.dataset.categoryId] = result.cents;
+        }
+
+        isSavingSettings = true;
+        dom.saveCategoryBudgetsButton.disabled = true;
+        dom.saveCategoryBudgetsButton.textContent = '保存中…';
+        try {
+          const next = cloneState(state);
+          next.settings.categoryBudgets = nextBudgets;
+          if (!commitState(next)) throw new Error('write failed');
+          renderCategoryBudgetForm();
+          renderHome();
+          showToast('分类预算已保存');
+        } catch (error) {
+          showBudgetError('保存失败：本机存储不可用或已满。');
+        } finally {
+          isSavingSettings = false;
+          dom.saveCategoryBudgetsButton.disabled = false;
+          dom.saveCategoryBudgetsButton.textContent = '保存分类预算';
+        }
       }
 
       function showCategoryError(message) {
@@ -4003,7 +5009,7 @@
         else if (right > visibleRight) dom.categoryPicker.scrollLeft = right - dom.categoryPicker.clientWidth + 6;
       }
 
-      function openRecordSheet(mode, recordId, trigger) {
+      function openRecordSheet(mode, recordId, trigger, options = {}) {
         if (!dom.recordLayer.hidden || !dom.confirmLayer.hidden) return;
         const record = mode === 'edit' ? state.records.find((item) => item.id === recordId) : null;
         if (mode === 'edit' && !record) {
@@ -4031,7 +5037,7 @@
         dom.noteInput.value = record ? record.note : '';
         dom.dateInput.min = '1900-01-01';
         dom.dateInput.max = todayKey;
-        dom.dateInput.value = record ? record.at.slice(0, 10) : now.dateKey;
+        dom.dateInput.value = record ? record.at.slice(0, 10) : (options.date || now.dateKey);
         dom.timeInput.value = record ? record.at.slice(11, 16) : `${pad2(now.hour)}:${pad2(now.minute)}`;
         dom.timeHint.textContent = '按北京时间记录';
         clearRecordErrors();
@@ -4124,6 +5130,7 @@
         renderHome();
         if (activeSubpage === 'records') renderAllRecordsList();
         if (activeSubpage === 'summaries') renderSummaryList();
+        if (activeSubpage === 'calendar') renderCalendar();
         if (activeSubpage === 'settings') updateSettingsDataSummary();
       }
 
@@ -4342,6 +5349,7 @@
         categoryEditingId = null;
         clearCategoryError();
         renderCategorySettings();
+        renderCategoryBudgetForm();
         renderHome();
         if (activeSubpage === 'records') renderAllRecordsList();
         if (activeSubpage === 'summaries') renderSummaryList();
@@ -4368,6 +5376,7 @@
         clearCategoryError();
         dom.newCategoryInput.value = '';
         renderCategorySettings();
+        renderCategoryBudgetForm();
         updateSettingsDataSummary();
         showToast('分类已添加');
         dom.newCategoryInput.focus();
@@ -4387,6 +5396,7 @@
           onConfirm: () => {
             const next = cloneState(state);
             next.settings.categories = next.settings.categories.filter((item) => item.id !== category.id);
+            delete next.settings.categoryBudgets[category.id];
             next.records = next.records.map((record) =>
               record.categoryId === category.id ? { ...record, categoryId: OTHER_CATEGORY_ID } : record
             );
@@ -4397,6 +5407,7 @@
             categoryEditingId = null;
             if (filterState.categoryId === category.id) filterState.categoryId = 'all';
             renderCategorySettings();
+            renderCategoryBudgetForm();
             renderHome();
             renderAllRecordsList();
             renderSummaryList();
@@ -4534,8 +5545,10 @@
               filterState = { keyword: '', categoryId: 'all', from: '', to: '' };
               expandedSummaryDate = null;
               fillFundsInputs();
+              fillSavingsInputs();
               dom.noonSwitch.setAttribute('aria-checked', String(state.settings.noonSummaryEnabled));
               renderCategorySettings();
+              renderCategoryBudgetForm();
               updateSettingsDataSummary();
               renderHome();
               scheduleTimeBoundaries();
@@ -4613,6 +5626,10 @@
         renderHome();
         if (activeSubpage === 'records') renderAllRecordsList();
         if (activeSubpage === 'summaries') renderSummaryList();
+        if (activeSubpage === 'calendar') {
+          dom.calendarNextButton.disabled = calendarMonthKey >= currentMonthKey();
+          renderCalendar();
+        }
         if (activeSubpage === 'settings') updateSettingsDataSummary();
         if (!dom.recordLayer.hidden) {
           dom.dateInput.max = nowDateKey();
@@ -4693,6 +5710,54 @@
         dom.recordsBackButton.addEventListener('click', () => closeSubpage());
         dom.summariesBackButton.addEventListener('click', () => closeSubpage());
         dom.settingsBackButton.addEventListener('click', () => closeSubpage());
+        dom.calendarButton.addEventListener('click', () => openSubpage('calendar', dom.calendarButton));
+        dom.calendarBackButton.addEventListener('click', () => closeSubpage());
+        dom.calendarPrevButton.addEventListener('click', () => {
+          calendarMonthKey = shiftMonthKey(calendarMonthKey, -1);
+          calendarSelectedDate = null;
+          renderCalendar();
+        });
+        dom.calendarNextButton.addEventListener('click', () => {
+          if (calendarMonthKey >= currentMonthKey()) return;
+          calendarMonthKey = shiftMonthKey(calendarMonthKey, 1);
+          calendarSelectedDate = null;
+          renderCalendar();
+        });
+        dom.calendarGrid.addEventListener('click', (event) => {
+          if (!(event.target instanceof Element)) return;
+          const day = event.target.closest('[data-date]');
+          if (!day) return;
+          calendarSelectedDate = day.dataset.date;
+          renderCalendar();
+          const card = dom.calendarDayCard;
+          if (!card.hidden) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        });
+        dom.calendarDayCard.addEventListener('click', (event) => {
+          if (!(event.target instanceof Element)) return;
+          const row = event.target.closest('button[data-record-id]');
+          if (!row) return;
+          openRecordSheet('edit', row.dataset.recordId, row);
+        });
+
+        dom.reminderBanner.addEventListener('click', (event) => {
+          if (!(event.target instanceof Element)) return;
+          if (event.target.closest('[data-dismiss-reminder]')) {
+            dismissReminder();
+            return;
+          }
+          const addYesterday = event.target.closest('[data-add-yesterday]');
+          if (addYesterday) {
+            openRecordSheet('create', null, addYesterday, { date: shiftDateKey(nowDateKey(), -1) });
+            return;
+          }
+          const openRecords = event.target.closest('[data-open-records]');
+          if (openRecords) openSubpage('records', openRecords);
+        });
+
+        dom.savingsNameInput.addEventListener('input', clearSavingsError);
+        dom.savingsAmountInput.addEventListener('input', clearSavingsError);
+        dom.saveSavingsButton.addEventListener('click', saveSavingsSettings);
+        dom.saveCategoryBudgetsButton.addEventListener('click', saveCategoryBudgets);
 
         document.addEventListener('click', (event) => {
           if (!(event.target instanceof Element)) return;

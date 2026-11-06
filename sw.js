@@ -1,5 +1,5 @@
 /* 一页账 service worker：只缓存本应用的静态外壳，不发送任何外部请求。 */
-const CACHE_NAME = 'one-page-ledger-shell-v1';
+const CACHE_NAME = 'one-page-ledger-shell-v2-20261107';
 const APP_SHELL = [
   './',
   './index.html',
