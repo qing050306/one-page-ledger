@@ -1,5 +1,5 @@
 /* 一页账 service worker：只缓存本应用的静态外壳，不发送任何外部请求。 */
-const CACHE_NAME = 'one-page-ledger-shell-v2-20261107';
+const CACHE_NAME = 'one-page-ledger-shell-v3-20261115';
 const APP_SHELL = [
   './',
   './index.html',
@@ -21,7 +21,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith('one-page-ledger-shell-') && key !== CACHE_NAME).map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
@@ -42,13 +42,13 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match('./index.html').then((cached) => cached || caches.match('./')))
+        .catch(() => caches.open(CACHE_NAME).then((cache) => cache.match('./index.html')))
     );
     return;
   }
 
   event.respondWith(
-    caches.match(request).then((cached) => {
+    caches.open(CACHE_NAME).then((cache) => cache.match(request)).then((cached) => {
       if (cached) return cached;
       return fetch(request).then((response) => {
         if (response && response.ok) {
